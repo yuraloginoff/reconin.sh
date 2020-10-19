@@ -6,16 +6,31 @@
 	exit 1
 }
 
-# domain to recon
 url=$1
 
-# Make dir for reports
-if ! [[ -d "$url" ]]; then
-	mkdir $url
-fi
+# DIRS
+[[ ! -d ./$url ]] && mkdir ./$url
+[[ ! -d ./$url/subs-src ]] && mkdir ./$url/subs-src
+[[ ! -d ./$url/asn ]] && mkdir ./$url/asn
 
-# DO THE RECON
-[[ ! -d ./$url/subdomains ]] && mkdir ./$url/subdomains
+echo -e '
++------------------------------+
+|                              |
+|    SUB-DOMAIN ENUMERATION    |
+|                              |
++------------------------------+\n'
+
+# ASN
+echo -e "[i] ASN discovery"
+curl -s "http://ip-api.com/json/$(dig +short $url)" | jq -r .as | tee ./$url/asn/asn.txt
+whois -h whois.radb.net -- "-i origin $(cat ./$url/asn/asn.txt | cut -d ' ' -f 1)" | grep -Eo "([0-9.]+){4}/[0-9]+" | uniq | tee ./$url/asn/list.txt
+echo -e "[+] Done! Saved to ./$url/asn/ \n"
+
+# CRT.SH
+echo -e "[i] Starting with crt.sh"
+chmod +x ./tools/crtsh_enum_psql.sh
+./tools/crtsh_enum_psql.sh $url | tee ./$url/subs-src/crtsh.txt
+echo -e "[+] Done! Saved to ./$url/subs-src/crtsh.txt\n"
 
 # # assetfinder
 # echo -e "\n[i] Getting $url subdomains with assetfinder..."
