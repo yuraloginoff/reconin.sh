@@ -11,23 +11,25 @@
 }
 
 url=$1
+tmpdir='./tools/dnsdumpster/tmp'
 
-[[ ! -d ./tmp ]] && mkdir ./tmp
+[[ ! -d $tmpdir ]] && mkdir $tmpdir
 
 # get csrftoken
-curl https://dnsdumpster.com/ -c "./tmp/cookies_$url.txt" -s -o /dev/null
+curl https://dnsdumpster.com/ -c "$tmpdir/cookies_$url.txt" -s -o /dev/null
+token=$(grep csrftoken "$tmpdir/cookies_$url.txt" | cut -f 7)
 
 # send POST request with csrftoken
 curl https://dnsdumpster.com/ \
 	-s \
-	-b "./tmp/cookies_$url.txt" \
+	-b "$tmpdir/cookies_$url.txt" \
 	-e 'https://dnsdumpster.com' \
-	-d "csrfmiddlewaretoken=$(grep csrftoken ./tmp/cookies_$url.txt | cut -f 7)" \
+	-d "csrfmiddlewaretoken=$token" \
 	-d "targetip=$url" \
-	>"./tmp/response_$url.html"
+	>"$tmpdir/response_$url.html"
 
 # Host Records (A)
 # this data may not be current as it uses a static database (updated monthly)
-cat "./tmp/response_$url.html" | pup 'div.table-responsive:last-child table tr td:first-child json{}' | jq '.[].text' | tr -d '"' | sort
+cat "$tmpdir/response_$url.html" | pup 'div.table-responsive:last-child table tr td:first-child json{}' | jq '.[].text' | tr -d '"' | sort
 
 exit 0

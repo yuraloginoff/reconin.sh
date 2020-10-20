@@ -22,6 +22,7 @@ echo -e '
 # ASN
 echo -e "[i] ASN discovery...\n"
 curl -s "http://ip-api.com/json/$(dig +short $url)" | jq -r .as | tee ./$url/asn/asn.txt
+echo ''
 whois -h whois.radb.net -- "-i origin $(cat ./$url/asn/asn.txt | cut -d ' ' -f 1)" | grep -Eo "([0-9.]+){4}/[0-9]+" | uniq | tee ./$url/asn/list.txt
 echo -e "\n[+] Done! Saved to ./$url/asn/ \n"
 
