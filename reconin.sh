@@ -13,24 +13,27 @@ url=$1
 [[ ! -d ./$url/subs-src ]] && mkdir ./$url/subs-src
 [[ ! -d ./$url/asn ]] && mkdir ./$url/asn
 
+chmod +x ./tools/**/*.sh
+
 echo -e '
-+------------------------------+
-|                              |
-|    SUB-DOMAIN ENUMERATION    |
-|                              |
-+------------------------------+\n'
+  SUB-DOMAIN ENUMERATION
+ ————————————————————————\n'
 
 # ASN
-echo -e "[i] ASN discovery"
+echo -e "[i] ASN discovery...\n"
 curl -s "http://ip-api.com/json/$(dig +short $url)" | jq -r .as | tee ./$url/asn/asn.txt
 whois -h whois.radb.net -- "-i origin $(cat ./$url/asn/asn.txt | cut -d ' ' -f 1)" | grep -Eo "([0-9.]+){4}/[0-9]+" | uniq | tee ./$url/asn/list.txt
-echo -e "[+] Done! Saved to ./$url/asn/ \n"
+echo -e "\n[+] Done! Saved to ./$url/asn/ \n"
 
 # CRT.SH
-echo -e "[i] Starting with crt.sh"
-chmod +x ./tools/crtsh_enum_psql.sh
+echo -e "\n[i] Starting with crt.sh...\n"
 ./tools/crtsh_enum_psql.sh $url | tee ./$url/subs-src/crtsh.txt
-echo -e "[+] Done! Saved to ./$url/subs-src/crtsh.txt\n"
+echo -e "\n[+] Done! Saved to ./$url/subs-src/crtsh.txt\n"
+
+# DNSdumpster
+echo -e "\n[i] Starting with DNSdumpster...\n"
+./tools/dnsdumpster/dnsdumpster.sh $url | tee ./$url/subs-src/dnsdumpster.txt
+echo -e "\n[+] Done! Saved to ./$url/subs-src/dnsdumpster.txt\n"
 
 # # assetfinder
 # echo -e "\n[i] Getting $url subdomains with assetfinder..."
