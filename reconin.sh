@@ -13,28 +13,43 @@ url=$1
 [[ ! -d ./$url/subs-src ]] && mkdir ./$url/subs-src
 [[ ! -d ./$url/asn ]] && mkdir ./$url/asn
 
+chmod +x ./tools/*.sh
 chmod +x ./tools/**/*.sh
 
 echo -e '
   SUB-DOMAIN ENUMERATION
  ————————————————————————\n'
 
-# ASN
+# AS numbers
+# The ASN numbers can be used to find netblocks of the domain
 echo -e "[i] ASN discovery...\n"
 curl -s "http://ip-api.com/json/$(dig +short $url)" | jq -r .as | tee ./$url/asn/asn.txt
-echo ''
-whois -h whois.radb.net -- "-i origin $(cat ./$url/asn/asn.txt | cut -d ' ' -f 1)" | grep -Eo "([0-9.]+){4}/[0-9]+" | uniq | tee ./$url/asn/list.txt
+whois -h whois.radb.net -- "-i origin $(cat ./$url/asn/asn.txt | cut -d ' ' -f 1)" | grep -Eo "([0-9.]+){4}/[0-9]+" | uniq >./$url/asn/list.txt
 echo -e "\n[+] Done! Saved to ./$url/asn/ \n"
 
+# Subject Alternate Name(SAN)
+# The Subject Alternative Name (SAN) is an extension to the X.509 specification that allows to specify additional host names for a single SSL certificate.
+echo -e "\n[i] Extract domain names from Subject Alternate Name...\n"
+python3 ./tools/san_subdomain_enum.py $url | tee ./$url/san.txt
+echo -e "\n[+] Done! Saved to ./$url/san.txt\n"
+
+# SPF record
+# SPF lists all the hosts that are authorised to send emails on behalf of a domain.
+echo -e "\n[i] Search for SPF...\n"
+./tools/enum_spf.sh $url | sort | tee ./$url/spf.txt
+echo -e "\n[+] Done! Saved to ./$url/spf.txt\n"
+
 # CRT.SH
-echo -e "\n[i] Starting with crt.sh...\n"
+echo -e "\n[i] Starting crt.sh...\n"
 ./tools/crtsh_enum_psql.sh $url | tee ./$url/subs-src/crtsh.txt
 echo -e "\n[+] Done! Saved to ./$url/subs-src/crtsh.txt\n"
 
 # DNSdumpster
-echo -e "\n[i] Starting with DNSdumpster...\n"
+echo -e "\n[i] Starting DNSdumpster...\n"
 ./tools/dnsdumpster/dnsdumpster.sh $url | tee ./$url/subs-src/dnsdumpster.txt
 echo -e "\n[+] Done! Saved to ./$url/subs-src/dnsdumpster.txt\n"
+
+#
 
 # # assetfinder
 # echo -e "\n[i] Getting $url subdomains with assetfinder..."
