@@ -52,8 +52,11 @@ fi
 # >>>>>>>>>>>>>>>>>>>>>>>> VARIABLES  >>>>>>>>>>>>>>>>>>>>>>>>
 
 readonly URL=$1
+readonly D_ROOT="./out/$URL"
 readonly D_NETINFO="./out/$URL/netinfo"
+readonly D_SUBS="./out/$URL/subs"
 readonly D_SUBS_SRC="./out/$URL/subs/src"
+readonly D_DISCOVERY="./out/$URL/discovery"
 
 # <<<<<<<<<<<<<<<<<<<<<<<< VARIABLES  <<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -65,83 +68,175 @@ readonly D_SUBS_SRC="./out/$URL/subs/src"
 [[ ! -d ./out/$URL/subs ]] && mkdir ./out/"$URL"/subs
 [[ ! -d ./out/$URL/subs/src ]] && mkdir ./out/"$URL"/subs/src
 [[ ! -d ./out/$URL/subs/takeover ]] && mkdir ./out/"$URL"/subs/takeover
+[[ ! -d ./out/$URL/discovery ]] && mkdir ./out/"$URL"/discovery
 
 # <<<<<<<<<<<<<<<<<<<<<<<< DIRECTORIES <<<<<<<<<<<<<<<<<<<<<<<<
 
-banner_simple "$URL various info"
+# banner_simple "$URL various info"
 
 
-# AS numbers
-# The ASN numbers can be used to find netblocks of the domain
-print_intro 'ASN discovery'
-curl -s "http://ip-api.com/json/$(dig +short "$URL")" \
-    | jq -r .as \
-    | tee "$D_NETINFO/asn.txt"
-echo
-whois -h whois.radb.net -- "-i origin $(cat "$D_NETINFO/asn.txt" \
-    | cut -d ' ' -f 1)" \
-    | grep -Eo "([0-9.]+){4}/[0-9]+" \
-    | uniq \
-    | tee "$D_NETINFO/asn-list.txt"
-print_outro "$D_NETINFO"
+# # AS numbers
+# # The ASN numbers can be used to find netblocks of the domain
+# print_intro 'ASN discovery'
+# curl -s "http://ip-api.com/json/$(dig +short "$URL")" \
+#     | jq -r .as \
+#     | tee "$D_NETINFO/asn.txt"
+# echo
+# whois -h whois.radb.net -- "-i origin $(cat "$D_NETINFO/asn.txt" \
+#     | cut -d ' ' -f 1)" \
+#     | grep -Eo "([0-9.]+){4}/[0-9]+" \
+#     | uniq \
+#     | tee "$D_NETINFO/asn-list.txt"
+# print_outro "$D_NETINFO"
 
 
-# Subject Alternate Name(SAN)
-# The Subject Alternative Name (SAN) is an extension to the X.509 specification that allows to specify additional host names for a single SSL certificate.
-print_intro 'Extract domain names from Subject Alternate Name'
-python3 \
-    ./tools/san_subdomain_enum.py "$URL" \
-    | tee "$D_NETINFO/san.txt"
-print_outro "$D_NETINFO/san.txt"
+# # Subject Alternate Name(SAN)
+# # The Subject Alternative Name (SAN) is an extension to the X.509 specification that allows to specify additional host names for a single SSL certificate.
+# print_intro 'Extract domain names from Subject Alternate Name'
+# python3 \
+#     ./tools/san_subdomain_enum.py "$URL" \
+#     | tee "$D_NETINFO/san.txt"
+# print_outro "$D_NETINFO/san.txt"
 
 
-# SPF record
-# SPF lists all the hosts that are authorised to send emails on behalf of a domain.
-print_intro 'Search for SPF'
-bash ./tools/enum_spf.sh "$URL" | sort | tee "$D_NETINFO/spf.txt"
-print_outro "$D_NETINFO/spf.txt"
+# # SPF record
+# # SPF lists all the hosts that are authorised to send emails on behalf of a domain.
+# print_intro 'Search for SPF'
+# bash ./tools/enum_spf.sh "$URL" | sort | tee "$D_NETINFO/spf.txt"
+# print_outro "$D_NETINFO/spf.txt"
 
 
-banner_simple "$URL subdomain enumeration"
+# banner_simple "Subdomain Enumeration"
 
-# CRT.SH
-print_intro 'Starting crt.sh'
-bash ./tools/crtsh_enum_psql.sh "$URL" | tee "$D_SUBS_SRC/crtsh.txt"
-print_outro "$D_SUBS_SRC/crtsh.txt" 'wc'
+# # CRT.SH
+# print_intro 'Starting crt.sh'
+# bash ./tools/crtsh_enum_psql.sh "$URL" | tee "$D_SUBS_SRC/crtsh.txt"
+# print_outro "$D_SUBS_SRC/crtsh.txt" 'wc'
 
-# DNSdumpster
-print_intro 'Starting DNSdumpster'
-bash ./tools/dnsdumpster/dnsdumpster.sh "$URL" \
-    | tee "$D_SUBS_SRC/dnsdumpster.txt"
-print_outro "$D_SUBS_SRC/dnsdumpster.txt" 'wc'
+# # DNSdumpster
+# print_intro 'Starting DNSdumpster'
+# bash ./tools/dnsdumpster/dnsdumpster.sh "$URL" \
+#     | tee "$D_SUBS_SRC/dnsdumpster.txt"
+# print_outro "$D_SUBS_SRC/dnsdumpster.txt" 'wc'
 
-# assetfinder
-print_intro 'Starting assetfinder'
-assetfinder "$URL" | grep "\.$URL" | tee "$D_SUBS_SRC/assetfinder.txt"
-print_outro "$D_SUBS_SRC/assetfinder.txt" 'wc'
+# # assetfinder
+# print_intro 'Starting assetfinder'
+# assetfinder "$URL" | grep "\.$URL" | tee "$D_SUBS_SRC/assetfinder.txt"
+# print_outro "$D_SUBS_SRC/assetfinder.txt" 'wc'
 
-# amass
-print_intro 'Starting amass'
-amass enum -d "$URL" \
-    -config './config/amass/config.ini' \
-    -o "$D_SUBS_SRC/amass.txt"
-print_outro "$D_SUBS_SRC/amass.txt" 'wc'
+# # amass
+# print_intro 'Starting amass'
+# amass enum -d "$URL" \
+#     -config './config/amass/config.ini' \
+#     -o "$D_SUBS_SRC/amass.txt"
+# print_outro "$D_SUBS_SRC/amass.txt" 'wc'
 
-# findomain
-print_intro 'Starting findomain'
-findomain -t "$URL" -o && mv "./$URL.txt" "$D_SUBS_SRC/findomain.txt"
-print_outro "$D_SUBS_SRC/findomain.txt" 'wc'
+# # findomain
+# print_intro 'Starting findomain'
+# findomain -t "$URL" -o && mv "./$URL.txt" "$D_SUBS_SRC/findomain.txt"
+# print_outro "$D_SUBS_SRC/findomain.txt" 'wc'
 
-# subfinder
-print_intro 'Starting subfinder'
-subfinder -d "$URL" -o "$D_SUBS_SRC/subfinder.txt"
-print_outro "$D_SUBS_SRC/subfinder.txt" 'wc'
+# # subfinder
+# print_intro 'Starting subfinder'
+# subfinder -d "$URL" -o "$D_SUBS_SRC/subfinder.txt"
+# print_outro "$D_SUBS_SRC/subfinder.txt" 'wc'
 
-# sublist3r
-print_intro 'Starting sublist3r'
-python3 "$HOME/bin/sublist3r" -d "$URL" -o "$D_SUBS_SRC/sublister.txt"
-print_outro "$D_SUBS_SRC/sublister.txt" 'wc'
+# # sublist3r
+# print_intro 'Starting sublist3r'
+# python3 "$HOME/bin/sublist3r" -d "$URL" -o "$D_SUBS_SRC/sublister.txt"
+# print_outro "$D_SUBS_SRC/sublister.txt" 'wc'
 
-# Total
-sort -u "$D_SUBS_SRC"/*.txt -o "$D_SUBS_SRC/subs-src-total.txt"
-print_outro "$D_SUBS_SRC/subs-src-total.txt" 'wc'
+# # Total
+# print_intro 'Sorting gathered subdomains'
+# sort -u "$D_SUBS_SRC"/*.txt -o "$D_SUBS_SRC/subs-src-total.txt"
+# print_outro "$D_SUBS_SRC/subs-src-total.txt" 'wc'
+
+
+# banner_simple "Subdomains Bruteforce"
+
+# # check if the target has a wildcard enabled
+# if host randomifje8z19td3hf8jafvh7g4q79gh274."$URL" | grep 'not found'; then
+#     print_intro 'There is no wildcard! Can bruteforce'
+
+#     # dnsgen & massdns
+#     print_intro "Starting dnsgen & massdns"
+
+#     cat "$D_SUBS_SRC/subs-src-total.txt" \
+#         | dnsgen - \
+#         | massdns -r ~/Tools/Massdns/lists/resolvers.txt \
+#             -t A -o S --quiet \
+#             -w "$D_SUBS_SRC/massdns.txt"
+
+#     cat "$D_SUBS_SRC/massdns.txt" | awk '{print $1}' | sed 's/\.$//' \
+#         | uniq >"$D_SUBS_SRC/massdns-resolved.txt"
+
+#     print_outro "$D_SUBS_SRC/massdns-resolved.txt" 'wc'
+# else
+#     echo '[-] There is a wildcard! No way for bruteforce. '
+# fi
+
+# banner_simple "Subdomains Total"
+
+# sort -u "$D_SUBS_SRC/subs-src-total.txt" "$D_SUBS_SRC/massdns-resolved.txt" \
+#      -o "$D_SUBS/subs.txt"
+# print_outro "$D_SUBS/subs.txt" 'wc'
+
+# httprobe
+# print_intro 'Check subdomains to be live with Httprobe'
+# httprobe -c 50 < "$D_SUBS/subs.txt" | tee "$D_SUBS/httprobed.txt"
+# print_outro "$D_SUBS/httprobed.txt" 'wc'
+
+# print_intro 'Subdomains links to hosts (remove protocol)'
+# while read -r hsub; do
+# 	sub=${hsub#*//} #remove protocol
+# 	echo "$sub" >>"$D_SUBS/probed.txt"
+# done < "$D_SUBS/httprobed.txt"
+
+# sort -u "$D_SUBS/probed.txt" -o "$D_SUBS/probed.txt"
+# print_outro "$D_SUBS/probed.txt" 'wc'
+
+
+# banner_simple "Subdomain Takeover"
+
+# # subjack
+# print_intro 'Starting subjack'
+# subjack \
+#     -w "$D_SUBS/probed.txt" \
+#     -t 100 \
+#     -timeout 30 \
+#     -o "$D_SUBS/takeover/subjack.txt" \
+#     -ssl \
+#     -c ./config/subjack/fingerprints.json \
+#     -v
+# echo -e '[+] Done!\n'
+
+# # tko-subs
+# print_intro 'Starting tko-subs'
+# tko-subs \
+#     -domains="$D_SUBS/probed.txt" \
+#     -data=./config/tko-subs/providers-data.csv \
+#     -output="$D_SUBS/takeover/tkosubs.csv"
+
+
+banner_simple "Discovery"
+
+# hakrawler
+print_intro 'Starting hakrawler'
+while read -r subdomain; do
+    echo -e "\n $subdomain \n"
+    hakrawler \
+        -url "$subdomain" \
+        -depth 1 \
+        -insecure \
+        -linkfinder \
+        -plain \
+    | tee "$D_DISCOVERY"/"$subdomain".txt
+
+    # delete if empty
+    if [ ! -s "$D_DISCOVERY"/"$subdomain".txt ]; then
+        rm -f "$D_DISCOVERY"/"$subdomain".txt
+    fi
+done < "$D_SUBS/probed.txt"
+
+# gobuster dir
+
