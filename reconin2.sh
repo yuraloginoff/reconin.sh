@@ -155,76 +155,87 @@ readonly D_DISCOVERY="./out/$URL/discovery"
 
 # # Total
 # print_intro 'Sorting gathered subdomains'
-# sort -u "$D_SUBS_SRC"/*.txt -o "$D_SUBS_SRC/subs-src-total.txt"
+# cat "$D_SUBS_SRC"/*.txt \
+#   | grep -v 'www.google.com' \
+#   | uniq \
+#   | tee "$D_SUBS_SRC/subs-src-total.txt"
 # print_outro "$D_SUBS_SRC/subs-src-total.txt" 'wc'
 
 
-banner_simple "Subdomains Bruteforce"
+# banner_simple "Subdomains Bruteforce"
 
-# check if the target has a wildcard enabled
-if host randomifje8z19td3hf8jafvh7g4q79gh274."$URL" | grep 'not found'; then
-  print_intro 'There is no wildcard! Can bruteforce'
+# # check if the target has a wildcard enabled
+# if host randomifje8z19td3hf8jafvh7g4q79gh274."$URL" | grep 'not found'; then
+#   print_intro 'There is no wildcard! Can bruteforce'
 
-  # dnsgen & massdns
-  print_intro "Starting dnsgen & massdns"
-  cat "$D_SUBS_SRC/subs-src-total.txt" \
-    | dnsgen - \
-    | massdns -r ~/Tools/Massdns/lists/resolvers.txt \
-      -t A -o S --quiet \
-      -w "$D_SUBS_SRC/massdns.txt"
+#   # dnsgen & massdns
+#   print_intro "Starting dnsgen & massdns"
+#   cat "$D_SUBS_SRC/subs-src-total.txt" \
+#     | dnsgen - \
+#     | massdns -r ~/Tools/Massdns/lists/resolvers.txt \
+#       -t A -o S --quiet \
+#       -w "$D_SUBS_SRC/massdns.txt"
 
-  cat "$D_SUBS_SRC/massdns.txt" | awk '{print $1}' | sed 's/\.$//' \
-    | uniq >"$D_SUBS_SRC/massdns-resolved.txt"
+#   cat "$D_SUBS_SRC/massdns.txt" | awk '{print $1}' | sed 's/\.$//' \
+#     | uniq >"$D_SUBS_SRC/massdns-resolved.txt"
 
-  print_outro "$D_SUBS_SRC/massdns-resolved.txt" 'wc'
-else
-  echo '[-] There is a wildcard! No way for bruteforce. '
-fi
-
-
-banner_simple "Subdomains Total"
+#   print_outro "$D_SUBS_SRC/massdns-resolved.txt" 'wc'
+# else
+#   echo '[-] There is a wildcard! No way for bruteforce. '
+# fi
 
 
-sort -u "$D_SUBS_SRC/subs-src-total.txt" "$D_SUBS_SRC/massdns-resolved.txt" \
-  -o "$D_SUBS/subs.txt"
-print_outro "$D_SUBS/subs.txt" 'wc'
-
-# httprobe
-print_intro 'Check subdomains to be live with Httprobe'
-httprobe -c 50 < "$D_SUBS/subs.txt" | tee "$D_SUBS/httprobed.txt"
-print_outro "$D_SUBS/httprobed.txt" 'wc'
-
-print_intro 'Subdomains links to hosts (remove protocol)'
-while read -r hsub; do
-sub=${hsub#*//} #remove protocol
-echo "$sub" >>"$D_SUBS/probed.txt"
-done < "$D_SUBS/httprobed.txt"
-
-sort -u "$D_SUBS/probed.txt" -o "$D_SUBS/probed.txt"
-print_outro "$D_SUBS/probed.txt" 'wc'
+# banner_simple "Subdomains Total"
 
 
-banner_simple "Subdomain Takeover"
+# cat "$D_SUBS_SRC/massdns-resolved.txt" "$D_SUBS_SRC/subs-src-total.txt" \
+#   | grep "$URL$" \
+#   | sort -u \
+#   | tee "$D_SUBS/subs.txt"
+
+# print_outro "$D_SUBS/subs.txt" 'wc'
+
+# # httprobe
+# print_intro 'Check subdomains to be live with Httprobe'
+# httprobe -c 50 < "$D_SUBS/subs.txt" | tee "$D_SUBS/httprobed.txt"
+# print_outro "$D_SUBS/httprobed.txt" 'wc'
 
 
-# subjack
-print_intro 'Starting subjack'
-subjack \
-  -w "$D_SUBS/probed.txt" \
-  -t 100 \
-  -timeout 30 \
-  -o "$D_SUBS/takeover/subjack.txt" \
-  -ssl \
-  -c ./config/subjack/fingerprints.json \
-  -v
-echo -e '[+] Done!\n'
+# print_intro 'Convert subdomains links to hosts (remove protocol)'
+# if [ -f "$D_SUBS/probed.txt" ]; then
+#   rm -f "$D_SUBS/probed.txt"
+# fi
 
-# tko-subs
-print_intro 'Starting tko-subs'
-tko-subs \
-  -domains="$D_SUBS/probed.txt" \
-  -data=./config/tko-subs/providers-data.csv \
-  -output="$D_SUBS/takeover/tkosubs.csv"
+# while read -r hsub; do
+#   sub=${hsub#*//} #remove protocol
+#   echo "$sub" >>"$D_SUBS/probed.txt"
+# done < "$D_SUBS/httprobed.txt"
+
+# sort -u "$D_SUBS/probed.txt" -o "$D_SUBS/probed.txt"
+# print_outro "$D_SUBS/probed.txt" 'wc'
+
+
+# banner_simple "Subdomain Takeover"
+
+
+# # subjack
+# print_intro 'Starting subjack'
+# subjack \
+#   -w "$D_SUBS/probed.txt" \
+#   -t 100 \
+#   -timeout 30 \
+#   -o "$D_SUBS/takeover/subjack.txt" \
+#   -ssl \
+#   -c ./config/subjack/fingerprints.json \
+#   -v
+# echo -e '[+] Done!\n'
+
+# # tko-subs
+# print_intro 'Starting tko-subs'
+# tko-subs \
+#   -domains="$D_SUBS/probed.txt" \
+#   -data=./config/tko-subs/providers-data.csv \
+#   -output="$D_SUBS/takeover/tkosubs.csv"
 
 
 banner_simple "Discovery"
