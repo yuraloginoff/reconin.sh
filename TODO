@@ -31,6 +31,7 @@ https://gist.github.com/dwisiswant0/c133bebc2f413766e3cc3d15fdcfd36d
 
 $ assetfinder [host] | hakrawler -plain -usewayback -wayback | grep "=" | egrep -iv ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" | qsreplace -a | dalfox pipe -b https://your.xss.ht -o out.txt
 
+https://arpo.xss.ht/
 
 DIRECTORY STRUCTURE
 
@@ -46,3 +47,7 @@ reconin.sh (root)
                 - takeover
             - asn
     - tools
+
+$(nmap -sV -T3 -Pn -p2075,2076,6443,3868,3366,8443,8080,9443,9091,3000,8000,5900,8081,6000,10000,8181,3306,5000,4000,8888,5432,15672,9999,161,4044,7077,4040,9000,8089,443,7447,7080,8880,8983,5673,7443,19000,19080 $subdomain  |  grep -E 'open|filtered|closed')
+
+$(nmap -sV -T3 -Pn -p3868,3366,8443,8080,9443,9091,3000,8000,5900,8081,6000,10000,8181,3306,5000,4000,8888,5432,15672,9999,161,4044,7077,4040,9000,8089,443,7447,7080,8880,8983,5673,7443,19000,19080 $domain |  grep -E 'open|filtered|closed')
