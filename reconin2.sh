@@ -75,6 +75,8 @@ readonly D_DISCOVERY="./out/$URL/discovery"
   && mkdir ./out/"$URL"/discovery/hakrawler/req
 [[ ! -d ./out/$URL/discovery/gobuster ]] \
   && mkdir ./out/"$URL"/discovery/gobuster
+[[ ! -d ./out/$URL/discovery/hosts ]] \
+  && mkdir ./out/"$URL"/discovery/hosts
 
 # <<<<<<<<<<<<<<<<<<<<<<<< DIRECTORIES <<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -202,10 +204,7 @@ readonly D_DISCOVERY="./out/$URL/discovery"
 
 
 # print_intro 'Convert subdomains links to hosts (remove protocol)'
-# if [ -f "$D_SUBS/probed.txt" ]; then
-#   rm -f "$D_SUBS/probed.txt"
-# fi
-
+# echo '' >"$D_SUBS/probed.txt"
 # while read -r hsub; do
 #   sub=${hsub#*//} #remove protocol
 #   echo "$sub" >>"$D_SUBS/probed.txt"
@@ -239,6 +238,34 @@ readonly D_DISCOVERY="./out/$URL/discovery"
 
 
 banner_simple "Discovery"
+
+
+# subdomain's IP
+print_intro "Getting subdomains' IP"
+echo >"$D_DISCOVERY/hosts/sub-dig.txt"
+echo >"$D_DISCOVERY/hosts/ips.txt"
+while read -r sub; do
+  if ip=$(dig +short "$sub"); then
+    echo -e "$sub:\n$ip\n" | tee -a "$D_DISCOVERY/hosts/sub-dig.txt"
+    echo "$ip" >>"$D_DISCOVERY/hosts/ips.txt"
+  fi
+done <"$D_SUBS/probed.txt"
+print_outro "$D_DISCOVERY/hosts/sub-dig.txt"
+
+# IP list
+print_intro 'List of IPs'
+sort \
+  -u -t . \
+  -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
+  -o "./$D_DISCOVERY/hosts/ips.txt" \
+  "./$D_DISCOVERY/hosts/ips.txt"
+cat "./$D_DISCOVERY/hosts/ips.txt"
+print_outro "$D_DISCOVERY/hosts/ips.txt" 'wc'
+
+
+
+
+
 
 # hakrawler
 # print_intro 'Starting hakrawler'
