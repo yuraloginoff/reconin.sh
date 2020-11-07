@@ -59,6 +59,8 @@ readonly D_SUBS="./out/$URL/subs"
 readonly D_SUBS_SRC="./out/$URL/subs/src"
 readonly D_DISCOVERY="./out/$URL/discovery"
 
+readonly D_NUCL_TMPL="$HOME/nuclei-templates"
+
 # <<<<<<<<<<<<<<<<<<<<<<<< VARIABLES  <<<<<<<<<<<<<<<<<<<<<<<<
 
 # >>>>>>>>>>>>>>>>>>>>>>>> DIRECTORIES >>>>>>>>>>>>>>>>>>>>>>>>
@@ -70,13 +72,25 @@ readonly D_DISCOVERY="./out/$URL/discovery"
 [[ ! -d ./out/$URL/subs/src ]] && mkdir ./out/"$URL"/subs/src
 [[ ! -d ./out/$URL/subs/takeover ]] && mkdir ./out/"$URL"/subs/takeover
 [[ ! -d ./out/$URL/discovery ]] && mkdir ./out/"$URL"/discovery
+
 [[ ! -d ./out/$URL/discovery/hakrawler ]] \
   && mkdir ./out/"$URL"/discovery/hakrawler \
   && mkdir ./out/"$URL"/discovery/hakrawler/req
+
 [[ ! -d ./out/$URL/discovery/gobuster ]] \
   && mkdir ./out/"$URL"/discovery/gobuster
+
 [[ ! -d ./out/$URL/discovery/hosts ]] \
   && mkdir ./out/"$URL"/discovery/hosts
+
+[[ ! -d ./out/$URL/discovery/ports ]] \
+  && mkdir ./out/"$URL"/discovery/ports
+
+[[ ! -d ./out/$URL/discovery/nmap ]] \
+  && mkdir ./out/"$URL"/discovery/nmap
+
+[[ ! -d ./out/$URL/discovery/nuclei ]] \
+  && mkdir ./out/"$URL"/discovery/nuclei
 
 # <<<<<<<<<<<<<<<<<<<<<<<< DIRECTORIES <<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -240,28 +254,91 @@ readonly D_DISCOVERY="./out/$URL/discovery"
 banner_simple "Discovery"
 
 
-# subdomain's IP
-print_intro "Getting subdomains' IP"
-echo >"$D_DISCOVERY/hosts/sub-dig.txt"
-echo >"$D_DISCOVERY/hosts/ips.txt"
-while read -r sub; do
-  if ip=$(dig +short "$sub"); then
-    echo -e "$sub:\n$ip\n" | tee -a "$D_DISCOVERY/hosts/sub-dig.txt"
-    echo "$ip" >>"$D_DISCOVERY/hosts/ips.txt"
-  fi
-done <"$D_SUBS/probed.txt"
-print_outro "$D_DISCOVERY/hosts/sub-dig.txt"
+# # subdomain's IP
+# print_intro "Getting subdomains' IP"
+# echo >"$D_DISCOVERY/hosts/sub-dig.txt"
+# echo >"$D_DISCOVERY/hosts/ips.txt"
+# while read -r sub; do
+#   if ip=$(dig +short "$sub"); then
+#     echo -e "$sub:\n$ip\n" | tee -a "$D_DISCOVERY/hosts/sub-dig.txt"
+#     echo "$ip" >>"$D_DISCOVERY/hosts/ips.txt"
+#   fi
+# done <"$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY/hosts/sub-dig.txt"
 
-# IP list
-print_intro 'List of IPs'
-sort \
-  -u -t . \
-  -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
-  -o "./$D_DISCOVERY/hosts/ips.txt" \
-  "./$D_DISCOVERY/hosts/ips.txt"
-cat "./$D_DISCOVERY/hosts/ips.txt"
-print_outro "$D_DISCOVERY/hosts/ips.txt" 'wc'
+# # IP list
+# print_intro 'List of IPs'
+# sort \
+#   -u -t . \
+#   -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
+#   -o "./$D_DISCOVERY/hosts/ips.txt" \
+#   "./$D_DISCOVERY/hosts/ips.txt"
+# cat "./$D_DISCOVERY/hosts/ips.txt"
+# print_outro "$D_DISCOVERY/hosts/ips.txt" 'wc'
 
+
+# Port scan
+# print_intro 'Port scan with Naabu'
+# while read -r host; do
+#   naabu -host "$host" -silent \
+#     | tee -a "$D_DISCOVERY/hosts/ports.txt"
+#   echo
+# done <"$D_DISCOVERY/hosts/ips.txt"
+# print_outro "$D_DISCOVERY/hosts/ports.txt"
+
+# grep -v ':80' "$D_DISCOVERY/hosts/ports.txt" \
+#   | grep -v ':443' \
+#   | tee "$D_DISCOVERY/hosts/ports-nonhttp.txt"
+
+# if [ -s "$D_DISCOVERY/hosts/ports-nonhttp.txt" ]; then
+#   # file not empty
+#   while read -r host_port; do
+#     host=$(echo "$host_port" | cut -d':' -f1)
+#     port=$(echo "$host_port" | cut -d':' -f2)
+#     echo "$port" >> "$D_DISCOVERY/ports/$host.txt"
+#   done <"$D_DISCOVERY/hosts/ports-nonhttp.txt"
+
+#   print_intro 'Scan interesting ports with Nmap'
+#   for f in "$D_DISCOVERY"/ports/*.txt; do
+#     ports=$(paste -s -d ',' "$f")
+#     f="${f##*/}"
+#     ip="${f/'.txt'/}"
+
+#     nmap -T4 -p"$ports" -sV \
+#       --max-retries 1 \
+#       --max-scan-delay 20 \
+#       --defeat-rst-ratelimit --open \
+#       -oN "$D_DISCOVERY/nmap/$ip.txt" \
+#       "$ip"
+#     echo
+#   done
+#   print_outro "$D_DISCOVERY/nmap"
+# fi
+
+
+# nuclei
+print_intro 'Starting  Nuclei'
+nuclei -update-templates
+
+while read -r subdomain; do
+  echo -e "\n $subdomain"
+  nuclei \
+    -c 20 \
+    -target "http://$subdomain" \
+    -o "$D_DISCOVERY/nuclei/$subdomain.txt" \
+    -silent \
+    -nC \
+    -t "$D_NUCL_TMPL/files/" \
+    -t "$D_NUCL_TMPL/cves/" \
+    -t "$D_NUCL_TMPL/files/" \
+    -t "$D_NUCL_TMPL/fuzzing/" \
+    -t "$D_NUCL_TMPL/generic-detections/" \
+    -t "$D_NUCL_TMPL/security-misconfiguration/" \
+    -t "$D_NUCL_TMPL/tokens/" \
+    -t "$D_NUCL_TMPL/vulnerabilities/"
+    # # # -pbar
+done < "$D_SUBS/probed.txt"
+print_outro "$D_DISCOVERY/nuclei/"
 
 
 
