@@ -1,5 +1,4 @@
-
-subdomains --> ip --> nmap --> brutespray
+subdomains --> ip --> naabu --> nmap
           |
           |--> hakrawler --> dalfox
           |             |--> sqlmap
@@ -11,12 +10,12 @@ subdomains --> ip --> nmap --> brutespray
 
 
 
-brutespray - https://github.com/x90skysn3k/brutespray
 dalfox     - https://github.com/hahwul/dalfox
 findomxss  - https://github.com/dwisiswant0/findom-xss
 gau        - https://github.com/lc/gau
 gobuster   - https://github.com/OJ/gobuster
 hakrawler  - https://github.com/hakluke/hakrawler
+naabu      - https://github.com/projectdiscovery/naabu
 nuclei     - https://github.com/projectdiscovery/nuclei
 qsreplace  - https://github.com/tomnomnom/qsreplace
 
@@ -33,21 +32,3 @@ $ assetfinder [host] | hakrawler -plain -usewayback -wayback | grep "=" | egrep 
 
 https://arpo.xss.ht/
 
-DIRECTORY STRUCTURE
-
-reconin.sh (root)
-    - config
-        - amass
-        - subjack
-        - tko-subs
-    - out
-        - oppo.com
-            - subs
-                - src
-                - takeover
-            - asn
-    - tools
-
-$(nmap -sV -T3 -Pn -p2075,2076,6443,3868,3366,8443,8080,9443,9091,3000,8000,5900,8081,6000,10000,8181,3306,5000,4000,8888,5432,15672,9999,161,4044,7077,4040,9000,8089,443,7447,7080,8880,8983,5673,7443,19000,19080 $subdomain  |  grep -E 'open|filtered|closed')
-
-$(nmap -sV -T3 -Pn -p3868,3366,8443,8080,9443,9091,3000,8000,5900,8081,6000,10000,8181,3306,5000,4000,8888,5432,15672,9999,161,4044,7077,4040,9000,8089,443,7447,7080,8880,8983,5673,7443,19000,19080 $domain |  grep -E 'open|filtered|closed')
