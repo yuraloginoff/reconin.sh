@@ -317,30 +317,31 @@ banner_simple "Discovery"
 
 
 # nuclei
-print_intro 'Starting  Nuclei'
-nuclei -update-templates
+# print_intro 'Starting  Nuclei'
+# nuclei -update-templates
 
-while read -r subdomain; do
-  echo -e "\n $subdomain"
-  nuclei \
-    -c 20 \
-    -target "http://$subdomain" \
-    -o "$D_DISCOVERY/nuclei/$subdomain.txt" \
-    -silent \
-    -nC \
-    -t "$D_NUCL_TMPL/files/" \
-    -t "$D_NUCL_TMPL/cves/" \
-    -t "$D_NUCL_TMPL/files/" \
-    -t "$D_NUCL_TMPL/fuzzing/" \
-    -t "$D_NUCL_TMPL/generic-detections/" \
-    -t "$D_NUCL_TMPL/security-misconfiguration/" \
-    -t "$D_NUCL_TMPL/tokens/" \
-    -t "$D_NUCL_TMPL/vulnerabilities/"
-    # # # -pbar
-done < "$D_SUBS/probed.txt"
-print_outro "$D_DISCOVERY/nuclei/"
+# while read -r subdomain; do
+#   echo -e "\n $subdomain"
+#   nuclei \
+#     -c 50 \
+#     -target "http://$subdomain" \
+#     -o "$D_DISCOVERY/nuclei/$subdomain.txt" \
+#     -nC \
+#     -t "$D_NUCL_TMPL/files/" \
+#     -t "$D_NUCL_TMPL/cves/" \
+#     -t "$D_NUCL_TMPL/files/" \
+#     -t "$D_NUCL_TMPL/generic-detections/" \
+#     -t "$D_NUCL_TMPL/security-misconfiguration/" \
+#     -t "$D_NUCL_TMPL/vulnerabilities/" \
+#     -pbar \
+#     -silent
 
+# done < "$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY/nuclei/"
 
+print_intro 'Nuclei total:'
+cat "$D_DISCOVERY"/nuclei/*.txt | tee "$D_DISCOVERY"/nuclei/TOTAL.txt
+print_outro "$D_DISCOVERY/nuclei/TOTAL.txt" 'wc'
 
 
 
@@ -394,7 +395,7 @@ print_outro "$D_DISCOVERY/nuclei/"
 #     -u "$subdomain" \
 #     -o "$D_DISCOVERY/gobuster/$subdomain.txt" \
 #     -t 100 \
-#     -x .php,.txt,.bak,.sql,.zip,.tar,.gz,.xlsx \
+#     -x .php,.asp,.txt,.bak,.sql,.zip,.tar,.gz,.rar,.xlsx \
 #     -w './config/dict/dirsearch.txt'
 # done < "$D_SUBS/probed.txt"
 # print_outro "$D_DISCOVERY/gobuster"
