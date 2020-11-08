@@ -1,201 +1,404 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Exit if no arguments
-[[ $# -eq 0 ]] && {
-    echo "Usage: $0 domain.com"
-    exit 1
+# Title:         reconin.sh
+# Description:   subdomain enumeration & takeover
+# Author:        yuraloginoff <yuretsmolodets@yandex.ru>
+# Date:          2020-mm-dd
+# Version:       1.0.0
+
+# Exit codes
+# ==========
+# 0   no error
+# 1   script interrupted
+
+# >>>>>>>>>>>>>>>>>>>>>>>> Functions >>>>>>>>>>>>>>>>>>>>>>>>
+
+function err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
 
-readonly url=$1
+function print_intro () {
+  echo -e "\n[i] $1..."
+}
 
-# DIRS
-[[ ! -d ./$url ]] && mkdir ./"$url"
-[[ ! -d ./$url/subs-src ]] && mkdir ./"$url"/subs-src
-[[ ! -d ./$url/asn ]] && mkdir ./"$url"/asn
+function print_outro () {
+  if (( $# == 1 )); then
+    echo -e "[+] Done! Saved to $1 \n"
+  elif (( $# == 2 )); then
+    echo -e "[+] Done! Saved $(wc -l "$1") \n"
+  else
+    echo -e "\nBye! \n"
+  fi
+}
 
-chmod +x ./tools/*.sh
-chmod +x ./tools/**/*.sh
+function banner_simple() {
+  local msg="* $* *"
+  local edge
+  edge=$(echo "$msg" | sed 's/./*/g')
+
+  echo -e "\t$(tput bold)$edge$(tput sgr0)"
+  echo -e "\t$(tput bold)$msg$(tput sgr0)"
+  echo -e "\t$(tput bold)$edge$(tput sgr0)"
+}
+
+
+# <<<<<<<<<<<<<<<<<<<<<<<< Functions <<<<<<<<<<<<<<<<<<<<<<<<
+
+# Exit if no arguments
+if [[ $# -eq 0 ]]; then
+  err "Usage: $0 domain.com"
+  exit 1
+fi
+
+# >>>>>>>>>>>>>>>>>>>>>>>> VARIABLES  >>>>>>>>>>>>>>>>>>>>>>>>
+
+readonly URL=$1
+readonly D_ROOT="./out/$URL"
+readonly D_NETINFO="./out/$URL/netinfo"
+readonly D_SUBS="./out/$URL/subs"
+readonly D_SUBS_SRC="./out/$URL/subs/src"
+readonly D_DISCOVERY="./out/$URL/discovery"
+
+readonly D_NUCL_TMPL="$HOME/nuclei-templates"
+
+# <<<<<<<<<<<<<<<<<<<<<<<< VARIABLES  <<<<<<<<<<<<<<<<<<<<<<<<
+
+# >>>>>>>>>>>>>>>>>>>>>>>> DIRECTORIES >>>>>>>>>>>>>>>>>>>>>>>>
+
+[[ ! -d ./out ]] && mkdir ./out
+[[ ! -d ./out/$URL ]] && mkdir ./out/"$URL"
+[[ ! -d ./out/$URL/netinfo ]] && mkdir ./out/"$URL"/netinfo
+[[ ! -d ./out/$URL/subs ]] && mkdir ./out/"$URL"/subs
+[[ ! -d ./out/$URL/subs/src ]] && mkdir ./out/"$URL"/subs/src
+[[ ! -d ./out/$URL/subs/takeover ]] && mkdir ./out/"$URL"/subs/takeover
+[[ ! -d ./out/$URL/discovery ]] && mkdir ./out/"$URL"/discovery
+
+[[ ! -d ./out/$URL/discovery/hakrawler ]] \
+  && mkdir ./out/"$URL"/discovery/hakrawler \
+  && mkdir ./out/"$URL"/discovery/hakrawler/req
+
+[[ ! -d ./out/$URL/discovery/gobuster ]] \
+  && mkdir ./out/"$URL"/discovery/gobuster
+
+[[ ! -d ./out/$URL/discovery/hosts ]] \
+  && mkdir ./out/"$URL"/discovery/hosts
+
+[[ ! -d ./out/$URL/discovery/ports ]] \
+  && mkdir ./out/"$URL"/discovery/ports
+
+[[ ! -d ./out/$URL/discovery/nmap ]] \
+  && mkdir ./out/"$URL"/discovery/nmap
+
+[[ ! -d ./out/$URL/discovery/nuclei ]] \
+  && mkdir ./out/"$URL"/discovery/nuclei
+
+# <<<<<<<<<<<<<<<<<<<<<<<< DIRECTORIES <<<<<<<<<<<<<<<<<<<<<<<<
+
+
+# banner_simple "$URL various info"
+
 
 # # AS numbers
 # # The ASN numbers can be used to find netblocks of the domain
-# echo -e "[i] ASN discovery...\n"
-# curl -s "http://ip-api.com/json/$(dig +short $url)" | jq -r .as | tee ./$url/asn/asn.txt
-# whois -h whois.radb.net -- "-i origin $(cat ./$url/asn/asn.txt | cut -d ' ' -f 1)" | grep -Eo "([0-9.]+){4}/[0-9]+" | uniq >./$url/asn/list.txt
-# echo -e "\n[+] Done! Saved to ./$url/asn/ \n"
+# print_intro 'ASN discovery'
+# curl -s "http://ip-api.com/json/$(dig +short "$URL")" \
+#   | jq -r .as \
+#   | tee "$D_NETINFO/asn.txt"
+# echo
+# whois -h whois.radb.net -- "-i origin $(cat "$D_NETINFO/asn.txt" \
+#   | cut -d ' ' -f 1)" \
+#   | grep -Eo "([0-9.]+){4}/[0-9]+" \
+#   | uniq \
+#   | tee "$D_NETINFO/asn-list.txt"
+# print_outro "$D_NETINFO"
+
 
 # # Subject Alternate Name(SAN)
 # # The Subject Alternative Name (SAN) is an extension to the X.509 specification that allows to specify additional host names for a single SSL certificate.
-# echo -e "\n[i] Extract domain names from Subject Alternate Name...\n"
-# python3 ./tools/san_subdomain_enum.py $url | tee ./$url/san.txt
-# echo -e "\n[+] Done! Saved to ./$url/san.txt\n"
+# print_intro 'Extract domain names from Subject Alternate Name'
+# python3 \
+#   ./tools/san_subdomain_enum.py "$URL" \
+#   | tee "$D_NETINFO/san.txt"
+# print_outro "$D_NETINFO/san.txt"
+
 
 # # SPF record
 # # SPF lists all the hosts that are authorised to send emails on behalf of a domain.
-# echo -e "\n[i] Search for SPF...\n"
-# ./tools/enum_spf.sh $url | sort | tee ./$url/spf.txt
-# echo -e "\n[+] Done! Saved to ./$url/spf.txt\n"
+# print_intro 'Search for SPF'
+# bash ./tools/enum_spf.sh "$URL" | sort | tee "$D_NETINFO/spf.txt"
+# print_outro "$D_NETINFO/spf.txt"
 
-# echo -e '
-#   SUBDOMAIN ENUMERATION
-#  ————————————————————————\n'
+
+# banner_simple "Subdomain Enumeration"
 
 # # CRT.SH
-# echo -e "\n[i] Starting crt.sh...\n"
-# ./tools/crtsh_enum_psql.sh $url | tee ./$url/subs-src/crtsh.txt
-# echo -e "\n[+] Done! Saved to ./$url/subs-src/crtsh.txt\n"
+# print_intro 'Starting crt.sh'
+# bash ./tools/crtsh_enum_psql.sh "$URL" | tee "$D_SUBS_SRC/crtsh.txt"
+# print_outro "$D_SUBS_SRC/crtsh.txt" 'wc'
 
 # # DNSdumpster
-# echo -e "\n[i] Starting DNSdumpster...\n"
-# ./tools/dnsdumpster/dnsdumpster.sh $url | tee ./$url/subs-src/dnsdumpster.txt
-# echo -e "\n[+] Done! Saved to ./$url/subs-src/dnsdumpster.txt\n"
+# print_intro 'Starting DNSdumpster'
+# bash ./tools/dnsdumpster/dnsdumpster.sh "$URL" \
+#   | tee "$D_SUBS_SRC/dnsdumpster.txt"
+# print_outro "$D_SUBS_SRC/dnsdumpster.txt" 'wc'
 
 # # assetfinder
-# echo -e "\n[i] Starting assetfinder..."
-# assetfinder $url | grep '\.'$url | tee "$url/subs-src/assetfinder.txt"
-# echo -e "[+] Done! Saved to ./$url/subs-src/assetfinder.txt\n"
+# print_intro 'Starting assetfinder'
+# assetfinder "$URL" | tee "$D_SUBS_SRC/assetfinder.txt"
+# print_outro "$D_SUBS_SRC/assetfinder.txt" 'wc'
 
 # # amass
-# echo -e "\n[i] Starting amass..."
-# amass enum -config './config/amass/config.ini' -d $url -o $url/subs-src/amass.txt
-# echo -e "[+] Done! Saved to ./$url/subs-src/amass.txt\n"
+# print_intro 'Starting amass'
+# amass enum -d "$URL" \
+#   -config './config/amass/config.ini' \
+#   -o "$D_SUBS_SRC/amass.txt"
+# print_outro "$D_SUBS_SRC/amass.txt" 'wc'
 
 # # findomain
-# echo -e "\n[i] Starting findomain..."
-# findomain -t $url -o
-# mv ./$url.txt ./$url/subs-src/findomain.txt
-# echo -e "[+] Done! Saved to ./$url/subs-src/findomain.txt\n"
+# print_intro 'Starting findomain'
+# findomain -t "$URL" -o && mv "./$URL.txt" "$D_SUBS_SRC/findomain.txt"
+# print_outro "$D_SUBS_SRC/findomain.txt" 'wc'
 
 # # subfinder
-# echo -e "\n[i] Starting subfinder..."
-# subfinder -d $url -o ./$url/subs-src/subfinder.txt
-# echo -e "[+] Done! Saved to ./$url/subs-src/subfinder.txt\n"
+# print_intro 'Starting subfinder'
+# subfinder -d "$URL" -o "$D_SUBS_SRC/subfinder.txt"
+# print_outro "$D_SUBS_SRC/subfinder.txt" 'wc'
 
 # # sublist3r
-# echo -e "\n[i] Starting sublist3r..."
-# python3 $HOME/bin/sublist3r -d $url -o ./$url/subs-src/sublister.txt
-# echo -e "[+] Done! Saved to ./$url/subs-src/sublister.txt\n"
+# print_intro 'Starting sublist3r'
+# python3 "$HOME/bin/sublist3r" -d "$URL" -o "$D_SUBS_SRC/sublister.txt"
+# print_outro "$D_SUBS_SRC/sublister.txt" 'wc'
 
 # # Total
-# sort -u ./$url/subs-src/*.txt -o "./$url/subs-src/subs-total.txt"
-# echo -e "\n[+] All subdomains: ./$url/subs-src/subs-total.txt"
-# echo -e "Total: $(cat "./$url/subs-src/subs-total.txt" | wc -l)\n"
+# print_intro 'Sorting gathered subdomains'
+# cat "$D_SUBS_SRC"/*.txt \
+#   | grep -v 'www.google.com' \
+#   | uniq \
+#   | tee "$D_SUBS_SRC/subs-src-total.txt"
+# print_outro "$D_SUBS_SRC/subs-src-total.txt" 'wc'
 
-echo -e '
-  SUBDOMAIN BRUTEFORCE
- ————————————————————————\n'
 
-# check if the target has a wildcard enabled
-# if host randomifje8z19td3hf8jafvh7g4q79gh274."$url" | grep 'not found'; then
-#     echo '[+] There is no wildcard! Can bruteforce...'
+# banner_simple "Subdomains Bruteforce"
 
-#     # dnsgen & massdns
-#     echo -e "\n[i] Starting dnsgen & massdns..."
-#     cat "./$url/subs-src/subs-total.txt" | dnsgen - | massdns -r ~/Tools/Massdns/lists/resolvers.txt -t A -o S -w ./$url/subs-src/massdns.txt
+# # check if the target has a wildcard enabled
+# if host randomifje8z19td3hf8jafvh7g4q79gh274."$URL" | grep 'not found'; then
+#   print_intro 'There is no wildcard! Can bruteforce'
 
-#     cat ./$url/subs-src/massdns.txt | awk '{print $1}' | sed 's/\.$//' | uniq >"./$url/subs-src/massdns-resolved.txt"
-#     echo -e "[+] Done! Saved to ./$url/subs-src/massdns.txt and ./$url/subs-src/massdns-resolved.txt\n"
+#   # dnsgen & massdns
+#   print_intro "Starting dnsgen & massdns"
+#   cat "$D_SUBS_SRC/subs-src-total.txt" \
+#     | dnsgen - \
+#     | massdns -r ~/Tools/Massdns/lists/resolvers.txt \
+#       -t A -o S --quiet \
+#       -w "$D_SUBS_SRC/massdns.txt"
+
+#   cat "$D_SUBS_SRC/massdns.txt" | awk '{print $1}' | sed 's/\.$//' \
+#     | uniq >"$D_SUBS_SRC/massdns-resolved.txt"
+
+#   print_outro "$D_SUBS_SRC/massdns-resolved.txt" 'wc'
 # else
-#     echo '[-] There is a wildcard! No way for bruteforce. '
+#   echo '[-] There is a wildcard! No way for bruteforce. '
 # fi
 
-# sort -u ./$url/subs-src/massdns-resolved.txt ./$url/subs-src/subs-total.txt -o ./$url/subdomains-list.txt
-# echo "Total subdomains: $(wc -l ./"$url"/subdomains-list.txt)"
 
-# echo -e "\n[i] Check subdomains to be live..."
-# while read subdomain; do
-# 	if host "$subdomain" >/dev/null; then
-# 		echo "$subdomain" >>./$url/live.txt
-# 	fi
-# done <./$url/subdomains-list.txt
-# echo -e "Total live subdomains: $(wc -l ./"$url"/live.txt)"
+# banner_simple "Subdomains Total"
 
-# httprobe
-# echo -e "\n[i] Check subdomains to be live with Httprobe..."
-# cat ./$url/subdomains-list.txt | httprobe | tee ./$url/httprobe.txt
-# echo -e "[+] httprobe done! Saved to ./$url/httprobe.txt\n"
 
-# while read sub; do
-# 	sub=${sub#*//} #remove protocol
-# 	echo $sub >>"./$url/probed.txt"
-# done <"./$url/httprobe.txt"
+# cat "$D_SUBS_SRC/massdns-resolved.txt" "$D_SUBS_SRC/subs-src-total.txt" \
+#   | grep "$URL$" \
+#   | sort -u \
+#   | tee "$D_SUBS/subs.txt"
 
-# sort -u ./$url/probed.txt -o ./$url/probed.txt
-# echo -e "Total probed subdomains: $(wc -l ./"$url"/probed.txt)\n"
+# print_outro "$D_SUBS/subs.txt" 'wc'
 
-# echo -e '
-#   SUBDOMAIN TAKEOVER
-#  ———————————————————— \n'
+# # httprobe
+# print_intro 'Check subdomains to be live with Httprobe'
+# httprobe -c 50 < "$D_SUBS/subs.txt" | tee "$D_SUBS/httprobed.txt"
+# print_outro "$D_SUBS/httprobed.txt" 'wc'
 
-# if [ ! -d "$url/takover" ]; then
-#     mkdir "$url/takover"
-# fi
+
+# print_intro 'Convert subdomains links to hosts (remove protocol)'
+# echo '' >"$D_SUBS/probed.txt"
+# while read -r hsub; do
+#   sub=${hsub#*//} #remove protocol
+#   echo "$sub" >>"$D_SUBS/probed.txt"
+# done < "$D_SUBS/httprobed.txt"
+
+# sort -u "$D_SUBS/probed.txt" -o "$D_SUBS/probed.txt"
+# print_outro "$D_SUBS/probed.txt" 'wc'
+
+
+# banner_simple "Subdomain Takeover"
+
 
 # # subjack
-# echo -e "\n[i] Trying subjack..."
+# print_intro 'Starting subjack'
 # subjack \
-#     -w "./$url/live.txt" \
-#     -t 100 \
-#     -timeout 30 \
-#     -o "./$url/takover/subjack.txt" \
-#     -ssl \
-#     -c ./config/subjack/fingerprints.json \
-#     -v
-# echo -e '[+] Done!'
+#   -w "$D_SUBS/probed.txt" \
+#   -t 100 \
+#   -timeout 30 \
+#   -o "$D_SUBS/takeover/subjack.txt" \
+#   -ssl \
+#   -c ./config/subjack/fingerprints.json \
+#   -v
+# echo -e '[+] Done!\n'
 
 # # tko-subs
+# print_intro 'Starting tko-subs'
 # tko-subs \
-#     -domains=./"$url"/live.txt \
-#     -data=./config/tko-subs/providers-data.csv \
-#     -output=./"$url"/takover/tkosubs.csv
+#   -domains="$D_SUBS/probed.txt" \
+#   -data=./config/tko-subs/providers-data.csv \
+#   -output="$D_SUBS/takeover/tkosubs.csv"
 
-# echo -e '
-#   ENUMERATE HOSTS
-#  ————————————————— \n'
 
-# if [ ! -d "$url/hosts" ]; then
-#     mkdir "$url/hosts"
-# fi
+banner_simple "Discovery"
+
 
 # # subdomain's IP
-# echo "[i] Getting IPs for subdomains..."
-
+# print_intro "Getting subdomains' IP"
+# echo >"$D_DISCOVERY/hosts/sub-dig.txt"
+# echo >"$D_DISCOVERY/hosts/ips.txt"
 # while read -r sub; do
-#     ip=$(dig +short "$sub")
-#     echo "$ip" - "$sub" | tee -a "./$url/hosts/ip-sub.txt"
-#     echo "$ip" >>"./$url/hosts/ips.txt"
-# done <./"$url"/probed.txt
-
-# echo -e "[+] Done! Saved to ./$url/hosts/subs-ip.txt \n"
+#   if ip=$(dig +short "$sub"); then
+#     echo -e "$sub:\n$ip\n" | tee -a "$D_DISCOVERY/hosts/sub-dig.txt"
+#     echo "$ip" >>"$D_DISCOVERY/hosts/ips.txt"
+#   fi
+# done <"$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY/hosts/sub-dig.txt"
 
 # # IP list
-# echo "[i] List of IPs..."
+# print_intro 'List of IPs'
 # sort \
-#     -u -t . \
-#     -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
-#     -o "./$url/hosts/ips.txt" \
-#     "./$url/hosts/ips.txt"
-# echo -e "[+] Saved to ./$url/hosts/ips.txt\n"
+#   -u -t . \
+#   -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
+#   -o "./$D_DISCOVERY/hosts/ips.txt" \
+#   "./$D_DISCOVERY/hosts/ips.txt"
+# cat "./$D_DISCOVERY/hosts/ips.txt"
+# print_outro "$D_DISCOVERY/hosts/ips.txt" 'wc'
 
 
-# # nmap
-# echo "[i] Scanning every of $(cat ./$url/ips.txt | wc -l) IP with nmap..."
-# [[ ! -d ./$url/nmap ]] && mkdir ./$url/nmap
-# while read ip; do
-# 	echo -e "\n> nmap for: $ip"
-# 	nmap -T4 -p- -sV -Pn --max-retries 1 --max-scan-delay 20 --defeat-rst-ratelimit --open -oN "./$url/nmap/$ip.txt" $ip
-# done <"./$url/ips.txt"
-# echo -e "\n[+] Done! Repots saved to ./$url/nmap/ \n"
+# Port scan
+# print_intro 'Port scan with Naabu'
+# while read -r host; do
+#   naabu -host "$host" -silent \
+#     | tee -a "$D_DISCOVERY/hosts/ports.txt"
+#   echo
+# done <"$D_DISCOVERY/hosts/ips.txt"
+# print_outro "$D_DISCOVERY/hosts/ports.txt"
+
+# grep -v ':80' "$D_DISCOVERY/hosts/ports.txt" \
+#   | grep -v ':443' \
+#   | tee "$D_DISCOVERY/hosts/ports-nonhttp.txt"
+
+# if [ -s "$D_DISCOVERY/hosts/ports-nonhttp.txt" ]; then
+#   # file not empty
+#   while read -r host_port; do
+#     host=$(echo "$host_port" | cut -d':' -f1)
+#     port=$(echo "$host_port" | cut -d':' -f2)
+#     echo "$port" >> "$D_DISCOVERY/ports/$host.txt"
+#   done <"$D_DISCOVERY/hosts/ports-nonhttp.txt"
+
+#   print_intro 'Scan interesting ports with Nmap'
+#   for f in "$D_DISCOVERY"/ports/*.txt; do
+#     ports=$(paste -s -d ',' "$f")
+#     f="${f##*/}"
+#     ip="${f/'.txt'/}"
+
+#     nmap -T4 -p"$ports" -sV \
+#       --max-retries 1 \
+#       --max-scan-delay 20 \
+#       --defeat-rst-ratelimit --open \
+#       -oN "$D_DISCOVERY/nmap/$ip.txt" \
+#       "$ip"
+#     echo
+#   done
+#   print_outro "$D_DISCOVERY/nmap"
+# fi
+
+
+# nuclei
+# print_intro 'Starting  Nuclei'
+# nuclei -update-templates
+
+# while read -r subdomain; do
+#   echo -e "\n $subdomain"
+#   nuclei \
+#     -c 50 \
+#     -target "http://$subdomain" \
+#     -o "$D_DISCOVERY/nuclei/$subdomain.txt" \
+#     -nC \
+#     -t "$D_NUCL_TMPL/files/" \
+#     -t "$D_NUCL_TMPL/cves/" \
+#     -t "$D_NUCL_TMPL/files/" \
+#     -t "$D_NUCL_TMPL/generic-detections/" \
+#     -t "$D_NUCL_TMPL/security-misconfiguration/" \
+#     -t "$D_NUCL_TMPL/vulnerabilities/" \
+#     -pbar \
+#     -silent
+
+# done < "$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY/nuclei/"
+
+print_intro 'Nuclei total:'
+cat "$D_DISCOVERY"/nuclei/*.txt | tee "$D_DISCOVERY"/nuclei/TOTAL.txt
+print_outro "$D_DISCOVERY/nuclei/TOTAL.txt" 'wc'
+
+
 
 # hakrawler
-# echo -e "\n[i] Starting hakrawler..."
-# [[ ! -d ./$url/hakrawler ]] && mkdir ./$url/hakrawler
-# while read domain; do
-# 	echo -e "\n> $domain"
-# 	# hakrawler -url $domain -depth 5 -plain -linkfinder -js -forms -insecure | tee ./$url/hakrawler/$domain.txt
-# 	hakrawler -url $domain -plain | tee ./$url/hakrawler/$domain.txt
-# done <./$url/subdomains-probed.txt
-# echo -e "\n[+] Done! Repots saved to ./$url/hakrawler/ \n"
+# print_intro 'Starting hakrawler'
+# while read -r subdomain; do
+#   echo -e "\n $subdomain \n"
+#   hakrawler \
+#     -url "$subdomain" \
+#     -depth 1 \
+#     -insecure \
+#     -linkfinder \
+#     -outdir "$D_DISCOVERY"/hakrawler/req  \
+#     -plain \
+#   | tee "$D_DISCOVERY"/hakrawler/"$subdomain".txt
 
-# webanalyze
+#   # delete if empty
+#   if [ ! -s "$D_DISCOVERY"/hakrawler/"$subdomain".txt ]; then
+#     rm -f "$D_DISCOVERY"/hakrawler/"$subdomain".txt
+#   fi
+# done < "$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY"/hakrawler
+
+
+# dirsearch
+# print_intro 'Starting dirsearch'
+# while read -r subdomain; do
+#     dirsearch \
+#         -e php,html,txt,bak,sql,zip,tar,gz,xlsx \
+#         # --force-extensions \
+#         -w ~/Tools/dirsearch/db/dicc.txt \
+#         -t 100 \
+#         -i 200 \
+#         --full-url \
+#         --request-by-hostname \
+#         --plain-text-report="$D_DISCOVERY"/dirsearch/"$subdomain".txt \
+#         -u "$subdomain"
+# done < "$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY/dirsearch"
+
+
+# gobuster dir
+# print_intro "Starting gobuster"
+# while read -r subdomain; do
+#   echo "$subdomain"
+#   gobuster dir \
+#     -e \
+#     -l \
+#     -k \
+#     -s '200,301' \
+#     -u "$subdomain" \
+#     -o "$D_DISCOVERY/gobuster/$subdomain.txt" \
+#     -t 100 \
+#     -x .php,.asp,.txt,.bak,.sql,.zip,.tar,.gz,.rar,.xlsx \
+#     -w './config/dict/dirsearch.txt'
+# done < "$D_SUBS/probed.txt"
+# print_outro "$D_DISCOVERY/gobuster"
+
 
 exit 0
