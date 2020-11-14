@@ -1,23 +1,27 @@
-subdomains --> ip --> naabu --> nmap
+subdomains ✓ --> ip ✓ --> naabu ✓ --> nmap ✓
           |
-          |--> hakrawler --> dalfox
+          |--> hakrawler ✓ --> dalfox
           |             |--> sqlmap
           |
-          |--> nuclei
-          |--> gobuster dir
+          |--> nuclei ✓
+          |--> feroxbuster ✓
           |--> gobuster --> dalfox
-          |--> gau --> findom-xss
+          |--> gau      --> findom-xss
+
+(╯°□°）╯︵ ┻━┻
+
+dalfox      - https://github.com/hahwul/dalfox
+feroxbuster - https://github.com/epi052/feroxbuster
+findomxss   - https://github.com/dwisiswant0/findom-xss
+gau         - https://github.com/lc/gau
+hakrawler   - https://github.com/hakluke/hakrawler
+httpx       - https://github.com/projectdiscovery/httpx
+naabu       - https://github.com/projectdiscovery/naabu
+nuclei      - https://github.com/projectdiscovery/nuclei
+qsreplace   - https://github.com/tomnomnom/qsreplace
+waybackurls - https://github.com/tomnomnom/waybackurls
 
 
-
-dalfox     - https://github.com/hahwul/dalfox
-findomxss  - https://github.com/dwisiswant0/findom-xss
-gau        - https://github.com/lc/gau
-gobuster   - https://github.com/OJ/gobuster
-hakrawler  - https://github.com/hakluke/hakrawler
-naabu      - https://github.com/projectdiscovery/naabu
-nuclei     - https://github.com/projectdiscovery/nuclei
-qsreplace  - https://github.com/tomnomnom/qsreplace
 
 
 $ gospider -S tageturls.txt -c 10 -d 5 --blacklist ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt)" --other-source | grep -e "code-200" | awk '{print $5}'|grep "=" | qsreplace -a | dalfox pipe -o result.txt
