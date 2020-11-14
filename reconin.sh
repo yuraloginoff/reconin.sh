@@ -58,6 +58,7 @@ readonly D_NETINFO="./out/$URL/netinfo"
 readonly D_SUBS="./out/$URL/subs"
 readonly D_SUBS_SRC="./out/$URL/subs/src"
 readonly D_DISCOVERY="./out/$URL/discovery"
+readonly D_HOSTS="./out/$URL/hosts"
 
 readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
@@ -71,26 +72,25 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 [[ ! -d ./out/$URL/subs ]] && mkdir ./out/"$URL"/subs
 [[ ! -d ./out/$URL/subs/src ]] && mkdir ./out/"$URL"/subs/src
 [[ ! -d ./out/$URL/subs/takeover ]] && mkdir ./out/"$URL"/subs/takeover
+[[ ! -d ./out/$URL/hosts ]] && mkdir ./out/"$URL"/hosts
 [[ ! -d ./out/$URL/discovery ]] && mkdir ./out/"$URL"/discovery
 
 [[ ! -d ./out/$URL/discovery/hakrawler ]] \
   && mkdir ./out/"$URL"/discovery/hakrawler \
   && mkdir ./out/"$URL"/discovery/hakrawler/req
 
-[[ ! -d ./out/$URL/discovery/gobuster ]] \
-  && mkdir ./out/"$URL"/discovery/gobuster
+[[ ! -d ./out/$URL/discovery/feroxbuster ]] \
+  && mkdir ./out/"$URL"/discovery/feroxbuster
 
-[[ ! -d ./out/$URL/discovery/hosts ]] \
-  && mkdir ./out/"$URL"/discovery/hosts
-
-[[ ! -d ./out/$URL/discovery/ports ]] \
-  && mkdir ./out/"$URL"/discovery/ports
-
-[[ ! -d ./out/$URL/discovery/nmap ]] \
-  && mkdir ./out/"$URL"/discovery/nmap
+[[ ! -d ./out/$URL/discovery/dirsearch ]] \
+  && mkdir ./out/"$URL"/discovery/dirsearch
 
 [[ ! -d ./out/$URL/discovery/nuclei ]] \
   && mkdir ./out/"$URL"/discovery/nuclei
+
+[[ ! -d ./out/$URL/discovery/gau ]] \
+  && mkdir ./out/"$URL"/discovery/gau
+
 
 # <<<<<<<<<<<<<<<<<<<<<<<< DIRECTORIES <<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -131,50 +131,49 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 # banner_simple "Subdomain Enumeration"
 
-# # CRT.SH
+
 # print_intro 'Starting crt.sh'
 # bash ./tools/crtsh_enum_psql.sh "$URL" | tee "$D_SUBS_SRC/crtsh.txt"
 # print_outro "$D_SUBS_SRC/crtsh.txt" 'wc'
 
-# # DNSdumpster
+
 # print_intro 'Starting DNSdumpster'
 # bash ./tools/dnsdumpster/dnsdumpster.sh "$URL" \
 #   | tee "$D_SUBS_SRC/dnsdumpster.txt"
 # print_outro "$D_SUBS_SRC/dnsdumpster.txt" 'wc'
 
-# # assetfinder
+
 # print_intro 'Starting assetfinder'
-# assetfinder "$URL" | tee "$D_SUBS_SRC/assetfinder.txt"
+# assetfinder --subs-only "$URL" | tee "$D_SUBS_SRC/assetfinder.txt"
 # print_outro "$D_SUBS_SRC/assetfinder.txt" 'wc'
 
-# # amass
+
 # print_intro 'Starting amass'
 # amass enum -d "$URL" \
 #   -config './config/amass/config.ini' \
 #   -o "$D_SUBS_SRC/amass.txt"
 # print_outro "$D_SUBS_SRC/amass.txt" 'wc'
 
-# # findomain
+
 # print_intro 'Starting findomain'
 # findomain -t "$URL" -o && mv "./$URL.txt" "$D_SUBS_SRC/findomain.txt"
 # print_outro "$D_SUBS_SRC/findomain.txt" 'wc'
 
-# # subfinder
+
 # print_intro 'Starting subfinder'
 # subfinder -d "$URL" -o "$D_SUBS_SRC/subfinder.txt"
 # print_outro "$D_SUBS_SRC/subfinder.txt" 'wc'
 
-# # sublist3r
+
 # print_intro 'Starting sublist3r'
 # python3 "$HOME/bin/sublist3r" -d "$URL" -o "$D_SUBS_SRC/sublister.txt"
 # print_outro "$D_SUBS_SRC/sublister.txt" 'wc'
 
-# # Total
+
 # print_intro 'Sorting gathered subdomains'
 # cat "$D_SUBS_SRC"/*.txt \
 #   | grep -v 'www.google.com' \
-#   | uniq \
-#   | tee "$D_SUBS_SRC/subs-src-total.txt"
+#   | uniq > "$D_SUBS_SRC/subs-src-total.txt"
 # print_outro "$D_SUBS_SRC/subs-src-total.txt" 'wc'
 
 
@@ -211,14 +210,14 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 # print_outro "$D_SUBS/subs.txt" 'wc'
 
-# # httprobe
 # print_intro 'Check subdomains to be live with Httprobe'
-# httprobe -c 50 < "$D_SUBS/subs.txt" | tee "$D_SUBS/httprobed.txt"
+# httprobe -c 50 < "$D_SUBS/subs.txt" \
+#   | tee "$D_SUBS/httprobed.txt"
 # print_outro "$D_SUBS/httprobed.txt" 'wc'
 
 
-# print_intro 'Convert subdomains links to hosts (remove protocol)'
-# echo '' >"$D_SUBS/probed.txt"
+# print_intro 'Convert subdomains links to hosts (remove https & http)'
+# echo >"$D_SUBS/probed.txt"
 # while read -r hsub; do
 #   sub=${hsub#*//} #remove protocol
 #   echo "$sub" >>"$D_SUBS/probed.txt"
@@ -231,7 +230,6 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 # banner_simple "Subdomain Takeover"
 
 
-# # subjack
 # print_intro 'Starting subjack'
 # subjack \
 #   -w "$D_SUBS/probed.txt" \
@@ -241,164 +239,213 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 #   -ssl \
 #   -c ./config/subjack/fingerprints.json \
 #   -v
-# echo -e '[+] Done!\n'
 
-# # tko-subs
+
 # print_intro 'Starting tko-subs'
 # tko-subs \
 #   -domains="$D_SUBS/probed.txt" \
 #   -data=./config/tko-subs/providers-data.csv \
 #   -output="$D_SUBS/takeover/tkosubs.csv"
+# echo
+
+# banner_simple "Hosts"
+
+
+# print_intro "Getting subdomains' IP"
+# echo >"$D_HOSTS/sub-dig.txt"
+# echo >"$D_HOSTS/ips.txt"
+# while read -r sub; do
+#   if ip=$(dig +short "$sub"); then
+#     echo -e "$sub:\n$ip\n" | tee -a "$D_HOSTS/sub-dig.txt"
+#     echo "$ip" >>"$D_HOSTS/ips.txt"
+#   fi
+# done <"$D_SUBS/probed.txt"
+# print_outro "$D_HOSTS/sub-dig.txt"
+
+
+# print_intro 'List of IPs'
+# sort \
+#   -u -t . \
+#   -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
+#   -o "./$D_HOSTS/ips.txt" \
+#   "./$D_HOSTS/ips.txt"
+# cat "./$D_HOSTS/ips.txt"
+# print_outro "$D_HOSTS/ips.txt" 'wc'
+
+
+# print_intro 'Port scan with Naabu'
+# while read -r host; do
+#   naabu -host "$host" -silent \
+#     | tee -a "$D_HOSTS/host-ports.txt"
+#   echo
+# done <"$D_HOSTS/ips.txt"
+# print_outro "$D_HOSTS/host-ports.txt"
+
+
+# print_intro 'Search for interesting hosts'
+# grep -v ':80' "$D_HOSTS/host-ports.txt" \
+#   | grep -v ':443' \
+#   | tee "$D_HOSTS/host-ports-nonhttp.txt"
+
+# if [ -s "$D_HOSTS/host-ports-nonhttp.txt" ]; then
+#   while read -r host_port; do
+#     host=$(echo "$host_port" | cut -d':' -f1)
+#     echo "$host" >> "$D_HOSTS/hosts-to-nmap.txt"
+#   done <"$D_HOSTS/host-ports-nonhttp.txt"
+
+#   sort -u "$D_HOSTS/hosts-to-nmap.txt" \
+#     -o "$D_HOSTS/hosts-to-nmap.txt"
+#   cat "$D_HOSTS/hosts-to-nmap.txt"
+#   print_outro "$D_HOSTS/hosts-to-nmap.txt" 'wc'
+# fi
 
 
 banner_simple "Discovery"
 
 
-# # subdomain's IP
-# print_intro "Getting subdomains' IP"
-# echo >"$D_DISCOVERY/hosts/sub-dig.txt"
-# echo >"$D_DISCOVERY/hosts/ips.txt"
-# while read -r sub; do
-#   if ip=$(dig +short "$sub"); then
-#     echo -e "$sub:\n$ip\n" | tee -a "$D_DISCOVERY/hosts/sub-dig.txt"
-#     echo "$ip" >>"$D_DISCOVERY/hosts/ips.txt"
-#   fi
-# done <"$D_SUBS/probed.txt"
-# print_outro "$D_DISCOVERY/hosts/sub-dig.txt"
-
-# # IP list
-# print_intro 'List of IPs'
-# sort \
-#   -u -t . \
-#   -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
-#   -o "./$D_DISCOVERY/hosts/ips.txt" \
-#   "./$D_DISCOVERY/hosts/ips.txt"
-# cat "./$D_DISCOVERY/hosts/ips.txt"
-# print_outro "$D_DISCOVERY/hosts/ips.txt" 'wc'
+# httpx \
+#   -title \
+#   -no-color \
+#   -status-code \
+#   -content-length \
+#   -l "$D_SUBS/probed.txt" \
+#   -o "$D_DISCOVERY/hosts-summary.txt"
+# print_outro "$D_DISCOVERY/hosts-summary.txt" 'wc'
 
 
-# Port scan
-# print_intro 'Port scan with Naabu'
-# while read -r host; do
-#   naabu -host "$host" -silent \
-#     | tee -a "$D_DISCOVERY/hosts/ports.txt"
-#   echo
-# done <"$D_DISCOVERY/hosts/ips.txt"
-# print_outro "$D_DISCOVERY/hosts/ports.txt"
+# print_intro 'Worth to discover'
+# grep '200' "$D_DISCOVERY/hosts-summary.txt" \
+#   | tee "$D_DISCOVERY/hosts-summary-200.txt"
 
-# grep -v ':80' "$D_DISCOVERY/hosts/ports.txt" \
-#   | grep -v ':443' \
-#   | tee "$D_DISCOVERY/hosts/ports-nonhttp.txt"
-
-# if [ -s "$D_DISCOVERY/hosts/ports-nonhttp.txt" ]; then
-#   # file not empty
-#   while read -r host_port; do
-#     host=$(echo "$host_port" | cut -d':' -f1)
-#     port=$(echo "$host_port" | cut -d':' -f2)
-#     echo "$port" >> "$D_DISCOVERY/ports/$host.txt"
-#   done <"$D_DISCOVERY/hosts/ports-nonhttp.txt"
-
-#   print_intro 'Scan interesting ports with Nmap'
-#   for f in "$D_DISCOVERY"/ports/*.txt; do
-#     ports=$(paste -s -d ',' "$f")
-#     f="${f##*/}"
-#     ip="${f/'.txt'/}"
-
-#     nmap -T4 -p"$ports" -sV \
-#       --max-retries 1 \
-#       --max-scan-delay 20 \
-#       --defeat-rst-ratelimit --open \
-#       -oN "$D_DISCOVERY/nmap/$ip.txt" \
-#       "$ip"
-#     echo
-#   done
-#   print_outro "$D_DISCOVERY/nmap"
-# fi
+# cut -d ' ' -f 1 "$D_DISCOVERY/hosts-summary-200.txt" \
+#   | tee "$D_DISCOVERY/targets.txt"
+# print_outro "$D_DISCOVERY/targets.txt" 'wc'
 
 
-# nuclei
+# Scan '200' only
+
+
 # print_intro 'Starting  Nuclei'
 # nuclei -update-templates
 
 # while read -r subdomain; do
 #   echo -e "\n $subdomain"
+#   dir=${subdomain#*//} #remove protocol
+
 #   nuclei \
+#     -nC  \
 #     -c 50 \
-#     -target "http://$subdomain" \
-#     -o "$D_DISCOVERY/nuclei/$subdomain.txt" \
-#     -nC \
-#     -t "$D_NUCL_TMPL/files/" \
+#     -pbar  \
+#     -silent \
+#     -target "$subdomain" \
+#     -t "$D_NUCL_TMPL/dns/" \
 #     -t "$D_NUCL_TMPL/cves/" \
 #     -t "$D_NUCL_TMPL/files/" \
+#     -t "$D_NUCL_TMPL/panels/" \
+#     -t "$D_NUCL_TMPL/workflows/" \
+#     -t "$D_NUCL_TMPL/technologies/" \
+#     -t "$D_NUCL_TMPL/vulnerabilities/" \
+#     -t "$D_NUCL_TMPL/subdomain-takeover/" \
 #     -t "$D_NUCL_TMPL/generic-detections/" \
 #     -t "$D_NUCL_TMPL/security-misconfiguration/" \
-#     -t "$D_NUCL_TMPL/vulnerabilities/" \
-#     -pbar \
-#     -silent
+#     -o "$D_DISCOVERY/nuclei/$dir.txt"
 
-# done < "$D_SUBS/probed.txt"
+# done < "$D_DISCOVERY/targets.txt"
 # print_outro "$D_DISCOVERY/nuclei/"
 
-print_intro 'Nuclei total:'
-cat "$D_DISCOVERY"/nuclei/*.txt | tee "$D_DISCOVERY"/nuclei/TOTAL.txt
-print_outro "$D_DISCOVERY/nuclei/TOTAL.txt" 'wc'
+
+# print_intro 'Nuclei total:'
+# cat "$D_DISCOVERY"/nuclei/*.txt | tee "$D_DISCOVERY"/nuclei/TOTAL.txt
+# print_outro "$D_DISCOVERY/nuclei/TOTAL.txt" 'wc'
 
 
+# print_intro "Starting feroxbuster"
+# while read -r subdomain; do
+#   dir=${subdomain#*//} #remove protocol
 
-# hakrawler
+#   feroxbuster \
+#     --depth 1 \
+#     --insecure \
+#     --threads 100 \
+#     --status-codes 200 \
+#     --url "$subdomain" \
+#     --extensions php txt bak sql zip gz json \
+#     --output "$D_DISCOVERY/feroxbuster/$dir.txt" \
+#     --wordlist '/usr/share/seclists/Discovery/Web-Content/common.txt'
+
+# done < "$D_DISCOVERY/targets.txt"
+# print_outro "$D_DISCOVERY/feroxbuster"
+
+# print_intro 'feroxbuster total:'
+# cat "$D_DISCOVERY"/feroxbuster/*.txt \
+#   | grep -v 'ERR' \
+#   | tee "$D_DISCOVERY"/feroxbuster/TOTAL.txt
+# print_outro "$D_DISCOVERY/feroxbuster/TOTAL.txt" 'wc'
+
+
 # print_intro 'Starting hakrawler'
 # while read -r subdomain; do
 #   echo -e "\n $subdomain \n"
+#   dir=${subdomain#*//} #remove protocol
+
 #   hakrawler \
 #     -url "$subdomain" \
-#     -depth 1 \
+#     -depth 2 \
 #     -insecure \
 #     -linkfinder \
 #     -outdir "$D_DISCOVERY"/hakrawler/req  \
 #     -plain \
-#   | tee "$D_DISCOVERY"/hakrawler/"$subdomain".txt
+#   | tee "$D_DISCOVERY"/hakrawler/"$dir".txt
 
 #   # delete if empty
-#   if [ ! -s "$D_DISCOVERY"/hakrawler/"$subdomain".txt ]; then
-#     rm -f "$D_DISCOVERY"/hakrawler/"$subdomain".txt
+#   if [ ! -s "$D_DISCOVERY"/hakrawler/"$dir".txt ]; then
+#     rm -f "$D_DISCOVERY"/hakrawler/"$dir".txt
 #   fi
-# done < "$D_SUBS/probed.txt"
+# done < "$D_DISCOVERY/targets.txt"
 # print_outro "$D_DISCOVERY"/hakrawler
 
 
-# dirsearch
-# print_intro 'Starting dirsearch'
-# while read -r subdomain; do
-#     dirsearch \
-#         -e php,html,txt,bak,sql,zip,tar,gz,xlsx \
-#         # --force-extensions \
-#         -w ~/Tools/dirsearch/db/dicc.txt \
-#         -t 100 \
-#         -i 200 \
-#         --full-url \
-#         --request-by-hostname \
-#         --plain-text-report="$D_DISCOVERY"/dirsearch/"$subdomain".txt \
-#         -u "$subdomain"
-# done < "$D_SUBS/probed.txt"
-# print_outro "$D_DISCOVERY/dirsearch"
+# print_intro 'hakrawler total:'
+# cat "$D_DISCOVERY"/hakrawler/*.txt \
+#   | tee "$D_DISCOVERY"/hakrawler/TOTAL.txt
+# print_outro "$D_DISCOVERY/hakrawler/TOTAL.txt" 'wc'
 
 
-# gobuster dir
-# print_intro "Starting gobuster"
-# while read -r subdomain; do
-#   echo "$subdomain"
-#   gobuster dir \
-#     -e \
-#     -l \
-#     -k \
-#     -s '200,301' \
-#     -u "$subdomain" \
-#     -o "$D_DISCOVERY/gobuster/$subdomain.txt" \
-#     -t 100 \
-#     -x .php,.asp,.txt,.bak,.sql,.zip,.tar,.gz,.rar,.xlsx \
-#     -w './config/dict/dirsearch.txt'
-# done < "$D_SUBS/probed.txt"
-# print_outro "$D_DISCOVERY/gobuster"
+# print_intro 'Starting gau'
+# while read -r url; do
+#   subdomain=${url#*//} #remove protocol
+#   echo -e "\n $subdomain \n"
+#   gau "$subdomain" | tee "$D_DISCOVERY"/gau/"$subdomain".txt
+
+#   # delete if empty
+#   if [ ! -s "$D_DISCOVERY"/gau/"$subdomain".txt ]; then
+#     rm -f "$D_DISCOVERY"/gau/"$subdomain".txt
+#   fi
+# done <"$D_DISCOVERY/targets.txt"
+# print_outro "$D_DISCOVERY"/gau
+
+
+# print_intro 'gau total:'
+# cat "$D_DISCOVERY"/gau/*.txt \
+#   | tee "$D_DISCOVERY"/gau/TOTAL.txt
+# print_outro "$D_DISCOVERY/gau/TOTAL.txt" 'wc'
+
+
+print_intro 'Gather unique urls of GET requests with original params'
+cat "$D_DISCOVERY"/gau/TOTAL.txt "$D_DISCOVERY"/hakrawler/TOTAL.txt \
+  | grep -v -Ei ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" \
+  | grep -v ' from ' \
+  | grep '=' \
+  | qsreplace -a \
+  | httpx -silent \
+  | tee "$D_DISCOVERY"/urls-uniq-get.txt
+print_outro "$D_DISCOVERY"/urls-uniq-get.txt 'wc'
+
+
+
+
+
+
 
 
 exit 0
