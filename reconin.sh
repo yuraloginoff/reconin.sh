@@ -58,6 +58,7 @@ readonly D_NETINFO="./out/$URL/netinfo"
 readonly D_SUBS="./out/$URL/subs"
 readonly D_SUBS_SRC="./out/$URL/subs/src"
 readonly D_DISCOVERY="./out/$URL/discovery"
+readonly D_XSS="./out/$URL/discovery/xss"
 readonly D_HOSTS="./out/$URL/hosts"
 
 readonly D_NUCL_TMPL="$HOME/nuclei-templates"
@@ -90,6 +91,9 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 [[ ! -d ./out/$URL/discovery/gau ]] \
   && mkdir ./out/"$URL"/discovery/gau
+
+[[ ! -d ./out/$URL/discovery/xss ]] \
+  && mkdir ./out/"$URL"/discovery/xss
 
 
 # <<<<<<<<<<<<<<<<<<<<<<<< DIRECTORIES <<<<<<<<<<<<<<<<<<<<<<<<
@@ -210,21 +214,34 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 # print_outro "$D_SUBS/subs.txt" 'wc'
 
-# print_intro 'Check subdomains to be live with Httprobe'
-# httprobe -c 50 < "$D_SUBS/subs.txt" \
-#   | tee "$D_SUBS/httprobed.txt"
-# print_outro "$D_SUBS/httprobed.txt" 'wc'
 
+# print_intro 'Check subdomains to be live'
+# httpx \
+#   -l "$D_SUBS/subs.txt" \
+#   -o "$D_SUBS/httpx.txt" \
+#   -follow-host-redirects \
+#   -follow-redirects \
+#   -content-length \
+#   -threads 100 \
+#   -status-code \
+#   -no-color \
+#   -silent \
+#   -ip
 
-# print_intro 'Convert subdomains links to hosts (remove https & http)'
-# echo >"$D_SUBS/probed.txt"
-# while read -r hsub; do
-#   sub=${hsub#*//} #remove protocol
-#   echo "$sub" >>"$D_SUBS/probed.txt"
-# done < "$D_SUBS/httprobed.txt"
+# print_outro "$D_SUBS/httpx.txt" 'wc'
 
-# sort -u "$D_SUBS/probed.txt" -o "$D_SUBS/probed.txt"
+# grep '\[200\]' "$D_SUBS/httpx.txt" > "$D_SUBS/httpx-200.txt"
+# grep '\[302\]' "$D_SUBS/httpx.txt" > "$D_SUBS/httpx-302.txt"
+# grep '\[404\]' "$D_SUBS/httpx.txt" > "$D_SUBS/httpx-404.txt"
+
+# tr -d '[]' <"$D_SUBS/httpx-200.txt" | cut -d ' ' -f 1 | sort | tee "$D_SUBS/probed.txt"
 # print_outro "$D_SUBS/probed.txt" 'wc'
+
+# tr -d '[]' <"$D_SUBS/httpx-200.txt" | cut -d ' ' -f 4 | uniq | tee "$D_SUBS/ips.txt"
+# print_outro "$D_SUBS/ips.txt" 'wc'
+
+# tr -d '[]' <"$D_SUBS/httpx-404.txt" | cut -d ' ' -f 1 > "$D_SUBS/takeover/404.txt"
+# print_outro "$D_SUBS/takeover/404.txt" 'wc'
 
 
 # banner_simple "Subdomain Takeover"
@@ -232,7 +249,7 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 # print_intro 'Starting subjack'
 # subjack \
-#   -w "$D_SUBS/probed.txt" \
+#   -w "$D_SUBS/takeover/404.txt" \
 #   -t 100 \
 #   -timeout 30 \
 #   -o "$D_SUBS/takeover/subjack.txt" \
@@ -243,7 +260,7 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 # print_intro 'Starting tko-subs'
 # tko-subs \
-#   -domains="$D_SUBS/probed.txt" \
+#   -domains="$D_SUBS/takeover/404.txt" \
 #   -data=./config/tko-subs/providers-data.csv \
 #   -output="$D_SUBS/takeover/tkosubs.csv"
 # echo
@@ -300,7 +317,7 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 # fi
 
 
-banner_simple "Discovery"
+# banner_simple "Discovery"
 
 
 # httpx \
@@ -322,7 +339,7 @@ banner_simple "Discovery"
 # print_outro "$D_DISCOVERY/targets.txt" 'wc'
 
 
-# Scan '200' only
+# print_intro 'Scan 200 only'
 
 
 # print_intro 'Starting  Nuclei'
@@ -431,16 +448,18 @@ banner_simple "Discovery"
 # print_outro "$D_DISCOVERY/gau/TOTAL.txt" 'wc'
 
 
-print_intro 'Gather unique urls of GET requests with original params'
-cat "$D_DISCOVERY"/gau/TOTAL.txt "$D_DISCOVERY"/hakrawler/TOTAL.txt \
-  | grep -v -Ei ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" \
-  | grep -v ' from ' \
-  | grep '=' \
-  | qsreplace -a \
-  | httpx -silent \
-  | tee "$D_DISCOVERY"/urls-uniq-get.txt
-print_outro "$D_DISCOVERY"/urls-uniq-get.txt 'wc'
+# print_intro 'Gather unique urls of GET requests with original params'
+# cat "$D_DISCOVERY"/gau/TOTAL.txt "$D_DISCOVERY"/hakrawler/TOTAL.txt \
+#   | grep -v -Ei ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" \
+#   | grep -v ' from ' \
+#   | grep '=' \
+#   | qsreplace -a \
+#   | httpx -status-code -mc 200 -silent -no-color \
+#   | tee "$D_DISCOVERY"/urls-uniq-get.txt
+# print_outro "$D_DISCOVERY"/urls-uniq-get.txt 'wc'
 
+# dalfox file "$D_DISCOVERY"/urls-uniq-get.txt \
+# | tee -a "$D_XSS/dalfox.txt"
 
 
 
