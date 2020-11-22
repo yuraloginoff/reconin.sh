@@ -22,7 +22,9 @@ qsreplace   - https://github.com/tomnomnom/qsreplace
 waybackurls - https://github.com/tomnomnom/waybackurls
 XSStrike    - https://github.com/UltimateHackers/XSStrike
 https://github.com/dwisiswant0/DSSS
-https://github.com/dwisiswant0/findom-xss
+https://github.com/tomnomnom/gf
+https://github.com/jaeles-project/gospider
+
 
 
 $ gospider -S tageturls.txt -c 10 -d 5 --blacklist ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt)" --other-source | grep -e "code-200" | awk '{print $5}'|grep "=" | qsreplace -a | dalfox pipe -o result.txt
@@ -36,4 +38,12 @@ https://gist.github.com/dwisiswant0/c133bebc2f413766e3cc3d15fdcfd36d
 $ assetfinder [host] | hakrawler -plain -usewayback -wayback | grep "=" | egrep -iv ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt|js)" | qsreplace -a | dalfox pipe -b https://your.xss.ht -o out.txt
 
 https://arpo.xss.ht/
+
+curl https://bootstrap.pypa.io/get-pip.py -o - | python
+
+
+# Host name enumeration via SSL certificates.
+# Domains that print * Missing DNS for have vulnerable certificates that should be rotated.
+certgraph -cdn -dns -apex [DOMAIN]...
+
 
