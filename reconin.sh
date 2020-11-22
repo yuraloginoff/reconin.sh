@@ -72,6 +72,7 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 [[ ! -d ./out/$URL/netinfo ]] && mkdir ./out/"$URL"/netinfo
 [[ ! -d ./out/$URL/subs ]] && mkdir ./out/"$URL"/subs
 [[ ! -d ./out/$URL/subs/src ]] && mkdir ./out/"$URL"/subs/src
+[[ ! -d ./out/$URL/subs/httpx ]] && mkdir ./out/"$URL"/subs/httpx
 [[ ! -d ./out/$URL/subs/takeover ]] && mkdir ./out/"$URL"/subs/takeover
 [[ ! -d ./out/$URL/hosts ]] && mkdir ./out/"$URL"/hosts
 [[ ! -d ./out/$URL/discovery ]] && mkdir ./out/"$URL"/discovery
@@ -174,6 +175,13 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 # print_outro "$D_SUBS_SRC/sublister.txt" 'wc'
 
 
+# print_intro 'Starting jldc.me'
+# curl -s "https://jldc.me/anubis/subdomains/$URL" \
+#   | grep -Po "((http|https):\/\/)?(([\w.-]*)\.([\w]*)\.([A-z]))\w+" \
+#   | tee "$D_SUBS_SRC/jldc.txt"
+# print_outro "$D_SUBS_SRC/jldc.txt" 'wc'
+
+
 # print_intro 'Sorting gathered subdomains'
 # cat "$D_SUBS_SRC"/*.txt \
 #   | grep -v 'www.google.com' \
@@ -183,11 +191,12 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 
 # banner_simple "Subdomains Bruteforce"
 
-# # check if the target has a wildcard enabled
+
+### check if the target has a wildcard enabled
 # if host randomifje8z19td3hf8jafvh7g4q79gh274."$URL" | grep 'not found'; then
 #   print_intro 'There is no wildcard! Can bruteforce'
 
-#   # dnsgen & massdns
+
 #   print_intro "Starting dnsgen & massdns"
 #   cat "$D_SUBS_SRC/subs-src-total.txt" \
 #     | dnsgen - \
@@ -218,7 +227,7 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 # print_intro 'Check subdomains to be live'
 # httpx \
 #   -l "$D_SUBS/subs.txt" \
-#   -o "$D_SUBS/httpx.txt" \
+#   -o "$D_SUBS/httpx/httpx.txt" \
 #   -follow-host-redirects \
 #   -follow-redirects \
 #   -content-length \
@@ -228,19 +237,32 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 #   -silent \
 #   -ip
 
-# print_outro "$D_SUBS/httpx.txt" 'wc'
+# print_outro "$D_SUBS/httpx/httpx.txt" 'wc'
 
-# grep '\[200\]' "$D_SUBS/httpx.txt" > "$D_SUBS/httpx-200.txt"
-# grep '\[302\]' "$D_SUBS/httpx.txt" > "$D_SUBS/httpx-302.txt"
-# grep '\[404\]' "$D_SUBS/httpx.txt" > "$D_SUBS/httpx-404.txt"
+## sort by status-codes
+# grep '\[200\]' "$D_SUBS/httpx/httpx.txt" > "$D_SUBS/httpx/httpx-200.txt"
+# grep '\[302\]' "$D_SUBS/httpx/httpx.txt" > "$D_SUBS/httpx/httpx-302.txt"
+# grep '\[404\]' "$D_SUBS/httpx/httpx.txt" > "$D_SUBS/httpx/httpx-404.txt"
 
-# tr -d '[]' <"$D_SUBS/httpx-200.txt" | cut -d ' ' -f 1 | sort | tee "$D_SUBS/probed.txt"
+# ## cut urls with content-length > 0
+# grep -v '\[0\]' "$D_SUBS/httpx/httpx-200.txt" \
+#   | tr -d '[]' \
+#   | cut -d ' ' -f 1 \
+#   | sort \
+#   | tee "$D_SUBS/probed.txt"
 # print_outro "$D_SUBS/probed.txt" 'wc'
 
-# tr -d '[]' <"$D_SUBS/httpx-200.txt" | cut -d ' ' -f 4 | uniq | tee "$D_SUBS/ips.txt"
+# ## cut IPs
+# tr -d '[]' <"$D_SUBS/httpx/httpx-200.txt" \
+#   | cut -d ' ' -f 4 \
+#   | sort -u -t . -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
+#   | tee "./$D_SUBS/ips.txt"
 # print_outro "$D_SUBS/ips.txt" 'wc'
 
-# tr -d '[]' <"$D_SUBS/httpx-404.txt" | cut -d ' ' -f 1 > "$D_SUBS/takeover/404.txt"
+# ## cut 404 urls
+# tr -d '[]' <"$D_SUBS/httpx/httpx-404.txt" \
+#   | cut -d ' ' -f 1 \
+#   > "$D_SUBS/takeover/404.txt"
 # print_outro "$D_SUBS/takeover/404.txt" 'wc'
 
 
@@ -265,29 +287,8 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 #   -output="$D_SUBS/takeover/tkosubs.csv"
 # echo
 
-# banner_simple "Hosts"
 
-
-# print_intro "Getting subdomains' IP"
-# echo >"$D_HOSTS/sub-dig.txt"
-# echo >"$D_HOSTS/ips.txt"
-# while read -r sub; do
-#   if ip=$(dig +short "$sub"); then
-#     echo -e "$sub:\n$ip\n" | tee -a "$D_HOSTS/sub-dig.txt"
-#     echo "$ip" >>"$D_HOSTS/ips.txt"
-#   fi
-# done <"$D_SUBS/probed.txt"
-# print_outro "$D_HOSTS/sub-dig.txt"
-
-
-# print_intro 'List of IPs'
-# sort \
-#   -u -t . \
-#   -k 1,1n -k 2,2n -k 3,3n -k 4,4n \
-#   -o "./$D_HOSTS/ips.txt" \
-#   "./$D_HOSTS/ips.txt"
-# cat "./$D_HOSTS/ips.txt"
-# print_outro "$D_HOSTS/ips.txt" 'wc'
+# banner_simple "Hosts Discovery"
 
 
 # print_intro 'Port scan with Naabu'
@@ -295,7 +296,7 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 #   naabu -host "$host" -silent \
 #     | tee -a "$D_HOSTS/host-ports.txt"
 #   echo
-# done <"$D_HOSTS/ips.txt"
+# done <"$D_SUBS/ips.txt"
 # print_outro "$D_HOSTS/host-ports.txt"
 
 
@@ -303,18 +304,15 @@ readonly D_NUCL_TMPL="$HOME/nuclei-templates"
 # grep -v ':80' "$D_HOSTS/host-ports.txt" \
 #   | grep -v ':443' \
 #   | tee "$D_HOSTS/host-ports-nonhttp.txt"
+# print_outro "$D_HOSTS/host-ports-nonhttp.txt"
 
-# if [ -s "$D_HOSTS/host-ports-nonhttp.txt" ]; then
-#   while read -r host_port; do
-#     host=$(echo "$host_port" | cut -d':' -f1)
-#     echo "$host" >> "$D_HOSTS/hosts-to-nmap.txt"
-#   done <"$D_HOSTS/host-ports-nonhttp.txt"
+if [ -s "$D_HOSTS/host-ports-nonhttp.txt" ]; then
+  cat "$D_HOSTS/host-ports-nonhttp.txt" \
+  | while read -r line ; do echo "${line%:*}"; done \
+  | uniq | tee "$D_HOSTS/hosts-to-nmap.txt"
 
-#   sort -u "$D_HOSTS/hosts-to-nmap.txt" \
-#     -o "$D_HOSTS/hosts-to-nmap.txt"
-#   cat "$D_HOSTS/hosts-to-nmap.txt"
-#   print_outro "$D_HOSTS/hosts-to-nmap.txt" 'wc'
-# fi
+  print_outro "$D_HOSTS/hosts-to-nmap.txt" 'wc'
+fi
 
 
 # banner_simple "Discovery"
