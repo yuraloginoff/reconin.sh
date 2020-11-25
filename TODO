@@ -39,7 +39,6 @@ $ assetfinder [host] | hakrawler -plain -usewayback -wayback | grep "=" | egrep 
 
 https://arpo.xss.ht/
 
-curl https://bootstrap.pypa.io/get-pip.py -o - | python
 
 
 # Host name enumeration via SSL certificates.
